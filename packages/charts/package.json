@@ -1,0 +1,22 @@
+{
+  "name": "@tw-stock-hub/charts",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "type-check": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "lightweight-charts": "^5.0.0",
+    "echarts": "^5.5.0",
+    "vue": "^3.4.0",
+    "@tw-stock-hub/types": "workspace:*"
+  },
+  "devDependencies": {
+    "@tw-stock-hub/tsconfig": "workspace:*",
+    "typescript": "^5.4.0",
+    "vue-tsc": "^2.0.0"
+  }
+}

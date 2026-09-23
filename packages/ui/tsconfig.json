@@ -1,0 +1,8 @@
+{
+  "extends": "@tw-stock-hub/tsconfig/vue",
+  "compilerOptions": {
+    "types": ["vite/client"]
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules"]
+}

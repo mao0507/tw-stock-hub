@@ -1,0 +1,9 @@
+{
+  "name": "@tw-stock-hub/tailwind-config",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./tailwind.config.ts",
+  "exports": {
+    ".": "./tailwind.config.ts"
+  }
+}

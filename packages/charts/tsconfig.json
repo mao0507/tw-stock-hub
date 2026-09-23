@@ -1,0 +1,5 @@
+{
+  "extends": "@tw-stock-hub/tsconfig/vue",
+  "include": ["src/**/*"],
+  "exclude": ["node_modules"]
+}

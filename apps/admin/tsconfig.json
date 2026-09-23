@@ -1,0 +1,10 @@
+{
+  "extends": "@tw-stock-hub/tsconfig/vue",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": { "@/*": ["src/*"] },
+    "types": ["vitest/globals"]
+  },
+  "include": ["src/**/*", "env.d.ts"],
+  "exclude": ["node_modules", "dist"]
+}

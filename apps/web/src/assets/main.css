@@ -1,0 +1,254 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   設計系統 Token（單一來源，見 DESIGN.md）
+   ============================================================ */
+:root {
+  --up: #e63950;
+  --dn: #10b77a;
+  --gold: #d97706;
+  --bg: #f4f6f9;
+  --sf: #ffffff;
+  --bd: #e2e8f0;
+  --txt: #0f172a;
+  --muted: #94a3b8;
+  --up-soft: rgba(230, 57, 80, 0.1);
+  --dn-soft: rgba(16, 183, 122, 0.1);
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+@layer base {
+  html {
+    font-family: 'Noto Sans TC', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-gray-50 text-gray-800;
+  }
+
+  * {
+    @apply box-border;
+  }
+
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-gray-300;
+  }
+
+  :focus-visible {
+    outline: 2px solid theme('colors.up.DEFAULT');
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl2 border border-gray-100 bg-white p-5 shadow-soft;
+  }
+
+  .stat-card {
+    @apply card flex flex-col gap-1;
+  }
+
+  .stat-card .stat-label {
+    @apply text-xs font-medium uppercase tracking-wide text-gray-400;
+  }
+
+  .stat-card .stat-value {
+    @apply font-mono text-2xl font-medium text-gray-900;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium;
+  }
+
+  .badge-up {
+    @apply badge bg-up-soft text-up;
+  }
+
+  .badge-down {
+    @apply badge bg-down-soft text-down;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center gap-2 rounded-lg bg-up px-4 py-2 text-sm font-medium text-white transition-all duration-200 ease-out hover:bg-up/90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 transition-all duration-200 ease-out hover:bg-gray-50 hover:text-gray-900 active:scale-[0.98];
+  }
+
+  .input-field {
+    @apply h-9 rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm outline-none transition-colors focus:border-up focus:bg-white focus:ring-2 focus:ring-up/15;
+  }
+
+  .table-modern {
+    @apply w-full text-sm;
+  }
+
+  .table-modern th {
+    @apply border-b border-gray-100 px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-gray-400;
+  }
+
+  .table-modern td {
+    @apply border-b border-gray-50 px-3 py-2.5 text-gray-700;
+  }
+
+  .table-modern tbody tr {
+    @apply transition-colors hover:bg-gray-50/80;
+  }
+}
+
+@layer utilities {
+  .text-up { color: var(--up); }
+  .text-down { color: var(--dn); }
+  .bg-up { background-color: var(--up); }
+  .bg-down { background-color: var(--dn); }
+  .bg-up-soft { background-color: var(--up-soft); }
+  .bg-down-soft { background-color: var(--dn-soft); }
+  .border-up { border-color: var(--up); }
+  .border-down { border-color: var(--dn); }
+
+  .num { font-family: var(--font-mono); }
+  .is-up { color: var(--up); }
+  .is-dn { color: var(--dn); }
+  .is-flat { color: var(--muted); }
+}
+
+/* ============================================================
+   共用設計元件（見 DESIGN.md §5）
+   ============================================================ */
+@layer components {
+  /* 看板 */
+  .panel {
+    background: var(--sf);
+    border: 1px solid var(--bd);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .panel-hd {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--bd);
+  }
+  .panel-title { font-size: 0.95rem; font-weight: 700; color: var(--txt); }
+  .panel-tag {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+  }
+
+  /* editorial header */
+  .page-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    border-bottom: 2px solid var(--txt);
+    padding-bottom: 0.75rem;
+  }
+  .page-head-title { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.01em; line-height: 1; }
+  .page-head-sub {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.35em;
+    color: var(--muted);
+    margin-top: 0.4rem;
+  }
+  .page-head-meta { font-size: 0.8rem; color: var(--muted); }
+
+  /* 分段 / 膠囊 / 多空切換 */
+  .seg {
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 0.35rem 0.7rem;
+    color: var(--muted);
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+  }
+  .seg:hover { color: var(--txt); }
+  .seg-on { color: var(--txt); border-bottom-color: var(--up); }
+
+  .pill {
+    font-size: 0.78rem;
+    font-weight: 500;
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+    color: var(--muted);
+    border: 1px solid var(--bd);
+    transition: all 0.15s;
+  }
+  .pill:hover { background: var(--bg); }
+  .pill-on { background: var(--txt); color: #fff; border-color: var(--txt); }
+
+  .bs-toggle { display: flex; border: 1px solid var(--bd); border-radius: 8px; overflow: hidden; }
+  .bs {
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 0.35rem 0.9rem;
+    color: var(--muted);
+    background: var(--sf);
+    transition: all 0.15s;
+  }
+  .bs-buy { background: var(--up); color: #fff; }
+  .bs-sell { background: var(--dn); color: #fff; }
+
+  /* 指標格 */
+  .stat-cell { display: flex; flex-direction: column; gap: 0.1rem; }
+  .stat-k { font-size: 0.7rem; color: var(--muted); }
+  .stat-v { font-family: var(--font-mono); font-size: 0.9rem; font-weight: 500; color: #334155; }
+
+  /* 流向長條 */
+  .flow-bar { height: 0.7rem; border-radius: 3px; min-width: 2px; transition: width 0.4s ease; }
+  .flow-up { background: linear-gradient(90deg, var(--up-soft), var(--up)); }
+  .flow-dn { background: linear-gradient(90deg, var(--dn-soft), var(--dn)); }
+
+  /* KPI 卡（個股基本面/回測共用） */
+  .kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.6rem; }
+  .kpi { display: flex; flex-direction: column; gap: 0.15rem; padding: 0.7rem 0.85rem; border: 1px solid var(--bd); border-radius: 10px; background: var(--sf); }
+  .kpi-k { font-size: 0.7rem; color: var(--muted); }
+  .kpi-v { font-family: var(--font-mono); font-size: 1.5rem; font-weight: 700; color: var(--txt); line-height: 1.1; }
+  .kpi-x { font-size: 0.66rem; color: var(--muted); }
+
+  /* 基本面區塊 */
+  .fund-sec { border: 1px solid var(--bd); border-radius: 12px; padding: 0.9rem 1rem; }
+  .fund-hd { font-size: 0.8rem; font-weight: 700; color: var(--txt); margin-bottom: 0.7rem; }
+  .fund-empty { font-size: 0.8rem; color: var(--muted); padding: 0.5rem 0; }
+  .fund-hd-row { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 0.7rem; flex-wrap: wrap; gap: 0.5rem; }
+  .fund-hd-side { font-size: 0.74rem; color: var(--muted); }
+  .fund-note { font-size: 0.72rem; color: var(--muted); }
+
+  .fund-table { width: 100%; font-size: 0.82rem; }
+  .fund-table th { text-align: right; padding: 0.35rem 0.5rem; font-size: 0.7rem; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--bd); }
+  .fund-table th:first-child { text-align: left; }
+  .fund-table td { text-align: right; padding: 0.4rem 0.5rem; border-bottom: 1px solid #f1f5f9; }
+  .fund-table td:first-child { text-align: left; color: var(--muted); }
+
+  /* CSS 長條圖（月營收 / 季 EPS） */
+  .bar-chart { display: flex; align-items: flex-end; gap: 2px; height: 120px; }
+  .bc-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; }
+  .bc-wrap { width: 100%; height: 96px; display: flex; align-items: flex-end; }
+  .bc-bar { width: 100%; min-height: 2px; border-radius: 2px 2px 0 0; transition: height 0.4s ease; }
+  .bc-up { background: linear-gradient(180deg, var(--up), var(--up-soft)); }
+  .bc-dn { background: linear-gradient(180deg, var(--dn), var(--dn-soft)); }
+  .bc-x { font-size: 0.5rem; color: var(--muted); white-space: nowrap; }
+}
+
+@media (min-width: 640px) {
+  .kpi-grid { grid-template-columns: repeat(4, 1fr); }
+}

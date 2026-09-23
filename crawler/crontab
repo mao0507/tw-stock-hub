@@ -1,0 +1,37 @@
+# supercronic crontab（容器 TZ=Asia/Taipei）
+# 每行啟動一個一次性 Python process，跑完即結束。
+# 融資融券：TWSE 常在 17:30 尚未公布，20:30 跑、22:30 補跑（upsert 冪等）。
+
+# 手動觸發輪詢（admin 寫入 stocks.pending_jobs）
+* * * * *          python run_job.py --pending
+
+# ── 盤後行情 ──
+40 14 * * 1-5      python run_job.py twse_daily
+45 14 * * 1-5      python run_job.py tpex_daily
+0  15 * * 1-5      python run_job.py market_index
+30 15 * * 1-5      python run_job.py valuation
+5  16 * * 1-5      python run_job.py sector
+20 16 * * 1-5      python run_job.py exdividend
+30 16 * * 1-5      python run_job.py institutional_twse
+32 16 * * 1-5      python run_job.py institutional_tpex
+0  18 * * 1-5      python run_job.py broker
+30 20 * * 1-5      python run_job.py margin_twse
+35 20 * * 1-5      python run_job.py margin_tpex
+30 22 * * 1-5      python run_job.py margin_twse
+35 22 * * 1-5      python run_job.py margin_tpex
+
+# ── 基本面 ──
+0  10 1-12 * *     python run_job.py revenue
+0  20 * * 6        python run_job.py financials
+10 20 * * 6        python run_job.py dividend
+0  21 * * 6        python run_job.py holders
+30 21 * * 0        python run_job.py etf_refresh
+
+# ── 新聞 ──
+0  8 * * 1-5       python run_job.py cnyes
+0,15,30,45 9-13 * * 1-5  python run_job.py mops
+0,30 9-13 * * 1-5  python run_job.py cnyes
+5,35 9-13 * * 1-5  python run_job.py yahoo
+0  14 * * 1-5      python run_job.py moneydj
+5  14 * * 1-5      python run_job.py twse_announcement
+10 16 * * 1-5      python run_job.py mops

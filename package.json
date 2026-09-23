@@ -1,0 +1,20 @@
+{
+  "name": "tw-stock-hub",
+  "private": true,
+  "packageManager": "pnpm@10.33.0",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "test": "turbo test",
+    "type-check": "turbo type-check"
+  },
+  "devDependencies": {
+    "turbo": "^2.11.3",
+    "typescript": "~5.9.0"
+  },
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=10.0.0"
+  }
+}
