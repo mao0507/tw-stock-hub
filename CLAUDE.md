@@ -54,7 +54,7 @@ configs/        eslint / tailwind / tsconfig 共用設定
 ```bash
 pnpm install
 pnpm --filter @tw-stock-hub/api dev          # api（讀根目錄 .env）
-pnpm --filter @tw-stock-hub/api test
+pnpm --filter @tw-stock-hub/api test         # 含整合測試，需 Docker（*.int.test.ts 會起 TimescaleDB 容器）
 pnpm --filter @tw-stock-hub/api db:generate  # 改 members schema 後產生 migration（api 啟動時自動套用）
 pnpm --filter @tw-stock-hub/web dev          # :3000，/api 代理到 :3001
 
@@ -64,6 +64,16 @@ cd crawler && uv run python run_job.py twse_daily
 docker compose up -d --build                 # 全部（需先 cp .env.example .env 並填值）
 bash scripts/backup-members.sh               # members 加密備份
 ```
+
+## 測試
+
+- api 唯一 seam：`createApp` + `app.request()` + 真 Postgres。整合測試檔命名 `*.int.test.ts`，用 `src/test/harness.ts`：
+  - `startTestDb()`：起 TimescaleDB 容器、執行 `db/init`、以 `api` 角色套 members migration；回傳 `api`（api 角色連線）與 `admin`（superuser，用來 seed `stocks.*`）
+  - `seedStock` / `seedQuotes`：seed 市場資料
+  - `authCookie()`：產生登入 cookie，不走 Google
+  - `waitFor()`：等 LISTEN/NOTIFY 這類非同步副作用
+- 只驗證外部行為（HTTP 狀態、回應、後續查詢結果），不斷言內部函式。
+- crawler 用 pytest（`crawler/tests/`）。
 
 ## 注意
 

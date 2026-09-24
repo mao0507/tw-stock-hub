@@ -1,21 +1,12 @@
 import { sign } from 'hono/jwt'
 import { describe, expect, it } from 'vitest'
 import { createApp } from './app.js'
-import { type Config, parseAllowedEmails } from './config.js'
+import { parseAllowedEmails } from './config.js'
 import type { Db } from './db/client.js'
 import { isAllowed } from './modules/auth/index.js'
+import { testConfig } from './test/harness.js'
 
-const config: Config = {
-  nodeEnv: 'test',
-  port: 0,
-  databaseUrl: 'postgres://unused',
-  jwtSecret: 'x'.repeat(32),
-  jwtTtlDays: 7,
-  google: { clientId: 'id', clientSecret: 'secret', redirectUri: 'http://localhost/api/auth/google' },
-  allowedEmails: parseAllowedEmails(' Me@Example.com , friend@example.com,'),
-  webOrigin: 'http://localhost:8080',
-  adminApiKey: 'k'.repeat(16),
-}
+const config = testConfig
 
 const app = createApp({
   config,
@@ -28,6 +19,7 @@ describe('allowlist', () => {
   it('忽略大小寫與空白，拒絕名單外與缺值', () => {
     expect(isAllowed('me@example.com', config.allowedEmails)).toBe(true)
     expect(isAllowed(' FRIEND@example.com', config.allowedEmails)).toBe(true)
+    expect(parseAllowedEmails(' A@x.com , ,b@y.com,').size).toBe(2)
     expect(isAllowed('stranger@example.com', config.allowedEmails)).toBe(false)
     expect(isAllowed(undefined, config.allowedEmails)).toBe(false)
     expect(config.allowedEmails.has('')).toBe(false)

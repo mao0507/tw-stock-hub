@@ -9,7 +9,7 @@ set -eo pipefail
 : "${CRAWLER_DB_PASSWORD:?CRAWLER_DB_PASSWORD 未設定}"
 
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" \
-  -v api_pw="$API_DB_PASSWORD" -v crawler_pw="$CRAWLER_DB_PASSWORD" <<'SQL'
+  -v api_pw="$API_DB_PASSWORD" -v crawler_pw="$CRAWLER_DB_PASSWORD" -v db="$POSTGRES_DB" <<'SQL'
 CREATE EXTENSION IF NOT EXISTS timescaledb SCHEMA public;
 CREATE EXTENSION IF NOT EXISTS pgcrypto SCHEMA public;
 
@@ -21,6 +21,8 @@ GRANT USAGE ON SCHEMA public TO api, crawler;
 
 CREATE SCHEMA stocks;
 CREATE SCHEMA members AUTHORIZATION api;
+-- drizzle migrator 每次都執行 CREATE SCHEMA IF NOT EXISTS，Postgres 即使 schema 已存在也要求此權限
+GRANT CREATE ON DATABASE :"db" TO api;
 
 GRANT USAGE ON SCHEMA stocks TO api, crawler;
 ALTER DEFAULT PRIVILEGES IN SCHEMA stocks
