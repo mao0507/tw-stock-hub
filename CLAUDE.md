@@ -39,7 +39,7 @@ configs/        eslint / tailwind / tsconfig 共用設定
 - [ ] portfolio 模組：自選分組 CRUD、HoldingLot CRUD、賣出、holdings 重算、P&L（排除無股價項目）、除息日持股股利
 - [ ] stock 模組：搬 web 目前用到的行情/法人/融資 API（參考 `../taiwan-stock-platform/apps/stock-api-service`）
 - [ ] admin 模組：搬爬蟲監控、資料健康檢查 API（admin 前端目前打的是舊路由）
-- [ ] `packages/api-client`：拿掉 token store / refresh 攔截器，改純 cookie（`withCredentials`），401 導向 `/api/auth/google`
+- [x] `packages/api-client`：單一 `apiClient`、純 cookie，401 導向 `/api/auth/google`（#3）
 - [ ] web `/portfolio` 頁面（shadcn-vue）
 - [ ] `crawler/monitor/alert.py` 的連續失敗計數存在記憶體，一次性任務下永遠歸零；改成查 `crawler_logs` 最近 N 筆
 

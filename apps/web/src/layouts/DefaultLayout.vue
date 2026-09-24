@@ -30,6 +30,11 @@ function onSearchBlur(): void {
   setTimeout(() => { showDropdown.value = false }, 150)
 }
 
+async function onLogout(): Promise<void> {
+  await authStore.logout()
+  await router.push({ name: 'login' })
+}
+
 function goToStock(id: string): void {
   showDropdown.value = false
   searchQuery.value = ''
@@ -40,11 +45,8 @@ const navItems = [
   { name: 'home', label: '大盤', icon: 'M3 13h4v8H3zM10 8h4v13h-4zM17 4h4v17h-4z' },
   { name: 'institutional', label: '法人', icon: 'M3 21h18M5 21V9l7-5 7 5v12M9 21v-6h6v6' },
   { name: 'margin', label: '融資券', icon: 'M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6' },
-  { name: 'brokers', label: '分點', icon: 'M3 3v18h18M7 16l4-6 4 3 5-7' },
-  { name: 'screener', label: '選股', icon: 'M11 19a8 8 0 100-16 8 8 0 000 16zM21 21l-4.35-4.35' },
   { name: 'calendar', label: '行事曆', icon: 'M3 9h18M7 3v3M17 3v3M5 5h14a1 1 0 011 1v13a1 1 0 01-1 1H5a1 1 0 01-1-1V6a1 1 0 011-1z' },
   { name: 'watchlist', label: '自選股', icon: 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z' },
-  { name: 'alerts', label: '警示', icon: 'M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0' },
 ]
 </script>
 
@@ -81,17 +83,22 @@ const navItems = [
         </router-link>
       </nav>
 
-      <div class="mt-auto">
-        <router-link
-          v-if="isLoggedIn && user"
-          to="/watchlist"
-        >
+      <div class="mt-auto flex flex-col items-center gap-2">
+        <template v-if="isLoggedIn && user">
           <UserAvatar
             :avatar-url="user.avatarUrl"
             :nickname="user.nickname"
             size="sm"
           />
-        </router-link>
+          <span class="hidden max-w-[4.5rem] truncate text-[11px] text-gray-500 md:block">{{ user.nickname }}</span>
+          <button
+            type="button"
+            class="text-xs text-gray-400 hover:text-up"
+            @click="onLogout"
+          >
+            登出
+          </button>
+        </template>
         <router-link
           v-else
           to="/login"

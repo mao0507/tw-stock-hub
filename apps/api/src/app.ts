@@ -1,21 +1,23 @@
 import { OpenAPIHono } from '@hono/zod-openapi'
+import type { MiddlewareHandler } from 'hono'
 import { csrf } from 'hono/csrf'
 import { HTTPException } from 'hono/http-exception'
 import { logger } from 'hono/logger'
 import type { Config } from './config.js'
 import type { Db } from './db/client.js'
 import { createAdminRoutes } from './modules/admin/index.js'
-import { createAuthRoutes, type UpsertUser } from './modules/auth/index.js'
+import { createAuthRoutes } from './modules/auth/index.js'
 import { createStockRoutes } from './modules/stock/index.js'
 
 export type AppDeps = {
   config: Config
   db: Db
-  upsertUser: UpsertUser
   ping: () => Promise<void>
+  /** 測試用：取代真 Google OAuth */
+  googleOAuth?: MiddlewareHandler
 }
 
-export function createApp({ config, db, upsertUser, ping }: AppDeps) {
+export function createApp({ config, db, ping, googleOAuth }: AppDeps) {
   const app = new OpenAPIHono()
 
   if (config.nodeEnv !== 'test') app.use(logger())
@@ -26,7 +28,7 @@ export function createApp({ config, db, upsertUser, ping }: AppDeps) {
     return c.json({ status: 'ok' })
   })
 
-  app.route('/api/auth', createAuthRoutes(config, upsertUser))
+  app.route('/api/auth', createAuthRoutes(config, db, googleOAuth))
   app.route('/api/admin', createAdminRoutes(db, config.adminApiKey))
   // ponytail: Q27 決議目前只在本機跑，stock 路由暫不驗證；上線前改掛 requireAuth
   app.route('/api', createStockRoutes(db))

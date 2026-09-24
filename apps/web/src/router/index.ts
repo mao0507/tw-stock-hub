@@ -81,18 +81,6 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/Auth/Login.vue'),
         meta: { title: '登入', guestOnly: true },
       },
-      {
-        path: 'register',
-        name: 'register',
-        component: () => import('@/views/Auth/Register.vue'),
-        meta: { title: '註冊', guestOnly: true },
-      },
-      {
-        path: 'auth/callback',
-        name: 'auth-callback',
-        component: () => import('@/views/Auth/Callback.vue'),
-        meta: { title: '登入中…' },
-      },
     ],
   },
   {
@@ -119,6 +107,7 @@ router.beforeEach(async (
 ) => {
   const { useAuthStore } = await import('@/stores/auth.store')
   const authStore = useAuthStore()
+  await authStore.initializeAuth()
 
   if (to.meta['requiresAuth'] && !authStore.isLoggedIn) {
     next({ name: 'login', query: { redirect: to.fullPath } })

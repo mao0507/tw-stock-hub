@@ -23,6 +23,7 @@ export const users = members.table('users', {
   googleId: varchar('google_id', { length: 100 }).notNull().unique(),
   nickname: varchar('nickname', { length: 50 }).notNull(),
   avatarUrl: varchar('avatar_url', { length: 500 }),
+  lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
   createdAt: createdAt(),
   updatedAt: timestamp('updated_at', { withTimezone: true })
     .notNull()

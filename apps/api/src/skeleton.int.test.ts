@@ -2,7 +2,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createApp } from './app.js'
 import { startCrawlerDoneListener } from './lib/crawler-events.js'
-import { createUpsertUser } from './modules/auth/repository.js'
 import { seedQuotes, seedStock, startTestDb, testConfig, type TestDb, waitFor } from './test/harness.js'
 import postgres from 'postgres'
 
@@ -15,7 +14,6 @@ beforeAll(async () => {
   app = createApp({
     config: testConfig,
     db: t.api.db,
-    upsertUser: createUpsertUser(t.api.db),
     ping: async () => {
       await t.api.sql`SELECT 1`
     },

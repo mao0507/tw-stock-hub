@@ -2,27 +2,17 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
-import { setupTokenStore, setupInterceptors, stockApiClient, authApiClient } from '@tw-stock-hub/api-client'
-import { useAuthStore } from '@/stores/auth.store'
+import { apiClient, authApi, setupUnauthorizedHandler } from '@tw-stock-hub/api-client'
 import './assets/main.css'
 
 const app = createApp(App)
-const pinia = createPinia()
 
-app.use(pinia)
+app.use(createPinia())
 app.use(router)
 
-const authStore = useAuthStore()
-
-setupTokenStore({
-  getAccessToken: () => authStore.accessToken,
-  getRefreshToken: () => authStore.refreshToken,
-  setTokens: (access, refresh) => authStore.setTokens(access, refresh),
-  clearTokens: () => authStore.clearTokens(),
-  redirectToLogin: () => { void router.push('/login') },
+// 登入失效：重新走 Google 登入，完成後回到目前頁面
+setupUnauthorizedHandler(apiClient, () => {
+  window.location.href = authApi.loginUrl(router.currentRoute.value.fullPath)
 })
-
-setupInterceptors(stockApiClient)
-setupInterceptors(authApiClient, true)
 
 app.mount('#app')

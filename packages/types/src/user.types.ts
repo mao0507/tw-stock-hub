@@ -1,12 +1,9 @@
-export type AuthProvider = 'local' | 'google' | 'both'
-
+/** GET /api/auth/me 回傳的登入使用者 */
 export interface User {
   id: string
   email: string
   nickname: string
   avatarUrl: string | null
-  authProvider: AuthProvider
-  createdAt: string
 }
 
 export interface WatchlistItem {
@@ -14,32 +11,6 @@ export interface WatchlistItem {
   stockId: string
   note: string | null
   addedAt: string
-}
-
-export interface AuthTokens {
-  access_token: string
-  refresh_token: string
-}
-
-export interface AuthResponse extends AuthTokens {
-  user: User
-}
-
-export interface LoginForm {
-  email: string
-  password: string
-}
-
-export interface RegisterForm {
-  email: string
-  password: string
-  nickname: string
-}
-
-export interface UpdateUserForm {
-  nickname?: string
-  currentPassword?: string
-  newPassword?: string
 }
 
 export interface AddWatchlistForm {

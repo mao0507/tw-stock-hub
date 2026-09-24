@@ -1,4 +1,3 @@
-export * from './auth.schema'
 export * from './stock.schema'
 export * from './news.schema'
 export * from './screener.schema'

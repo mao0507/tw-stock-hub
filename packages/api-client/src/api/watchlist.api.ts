@@ -1,23 +1,23 @@
 import type { WatchlistItem, AddWatchlistForm } from '@tw-stock-hub/types'
-import { authApiClient } from '../axios'
+import { apiClient } from '../axios'
 
 export const watchlistApi = {
   async getWatchlist(): Promise<WatchlistItem[]> {
-    const { data } = await authApiClient.get<WatchlistItem[]>('/api/watchlist')
+    const { data } = await apiClient.get<WatchlistItem[]>('/api/watchlist')
     return data
   },
 
   async addToWatchlist(form: AddWatchlistForm): Promise<WatchlistItem> {
-    const { data } = await authApiClient.post<WatchlistItem>('/api/watchlist', form)
+    const { data } = await apiClient.post<WatchlistItem>('/api/watchlist', form)
     return data
   },
 
   async removeFromWatchlist(stockId: string): Promise<void> {
-    await authApiClient.delete(`/api/watchlist/${stockId}`)
+    await apiClient.delete(`/api/watchlist/${stockId}`)
   },
 
   async updateWatchlistNote(stockId: string, note: string | null): Promise<WatchlistItem> {
-    const { data } = await authApiClient.patch<WatchlistItem>(`/api/watchlist/${stockId}`, { note })
+    const { data } = await apiClient.patch<WatchlistItem>(`/api/watchlist/${stockId}`, { note })
     return data
   },
 }

@@ -1,98 +1,22 @@
-import type { AxiosInstance, InternalAxiosRequestConfig } from 'axios'
+import type { AxiosInstance } from 'axios'
 import axios from 'axios'
 
-interface TokenStore {
-  getAccessToken: () => string | null
-  getRefreshToken: () => string | null
-  setTokens: (access: string, refresh: string) => void
-  clearTokens: () => void
-  redirectToLogin: () => void
-}
+/** 這些路徑的 401 屬正常流程（例如訪客查詢登入狀態），不觸發導向登入 */
+const SILENT_401_PATHS = ['/api/auth/me', '/api/auth/logout']
 
-let tokenStore: TokenStore | null = null
-
-export function setupTokenStore(store: TokenStore): void {
-  tokenStore = store
-}
-
-let isRefreshing = false
-let pendingQueue: Array<{
-  resolve: (token: string) => void
-  reject: (err: unknown) => void
-}> = []
-
-function processQueue(token: string | null, error: unknown = null): void {
-  for (const { resolve, reject } of pendingQueue) {
-    if (token) resolve(token)
-    else reject(error)
-  }
-  pendingQueue = []
-}
-
-export function setupInterceptors(instance: AxiosInstance, isAuthInstance = false): void {
-  instance.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-    const token = tokenStore?.getAccessToken()
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
-    return config
-  })
-
+/** 任何 API 回 401（登入失效）時呼叫 onUnauthorized。 */
+export function setupUnauthorizedHandler(instance: AxiosInstance, onUnauthorized: () => void): void {
   instance.interceptors.response.use(
     (response) => response,
-    async (error: unknown) => {
-      if (!axios.isAxiosError(error)) return Promise.reject(error)
-
-      const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean }
-
+    (error: unknown) => {
       if (
-        error.response?.status !== 401 ||
-        originalRequest._retry ||
-        isAuthInstance
+        axios.isAxiosError(error) &&
+        error.response?.status === 401 &&
+        !SILENT_401_PATHS.some((p) => error.config?.url?.startsWith(p))
       ) {
-        return Promise.reject(error)
+        onUnauthorized()
       }
-
-      originalRequest._retry = true
-
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          pendingQueue.push({
-            resolve: (token) => {
-              originalRequest.headers.Authorization = `Bearer ${token}`
-              resolve(instance(originalRequest))
-            },
-            reject,
-          })
-        })
-      }
-
-      isRefreshing = true
-
-      try {
-        const refreshToken = tokenStore?.getRefreshToken()
-        if (!refreshToken) throw new Error('No refresh token')
-
-        const authBase = instance.defaults.baseURL?.replace(':3002', ':3001') ?? 'http://localhost:3001'
-        const { data } = await axios.post<{
-          access_token: string
-          refresh_token: string
-        }>(`${authBase}/api/auth/refresh`, { refresh_token: refreshToken })
-
-        const { access_token, refresh_token } = data
-        tokenStore?.setTokens(access_token, refresh_token)
-        processQueue(access_token)
-
-        originalRequest.headers.Authorization = `Bearer ${access_token}`
-        return instance(originalRequest)
-      } catch (refreshError) {
-        processQueue(null, refreshError)
-        tokenStore?.clearTokens()
-        tokenStore?.redirectToLogin()
-        return Promise.reject(refreshError)
-      } finally {
-        isRefreshing = false
-      }
+      return Promise.reject(error)
     },
   )
 }
