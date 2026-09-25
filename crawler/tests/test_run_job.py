@@ -52,3 +52,26 @@ async def test_failed_job_does_not_publish(monkeypatch):
     with pytest.raises(RuntimeError):
         await run_job.run_one("exdividend")
     assert calls == []
+
+
+def test_crawler_class_name_resolves_to_job():
+    from scheduler.jobs import resolve_job
+    assert resolve_job("TWSEDailyQuoteCrawler") == "twse_daily"
+    assert resolve_job("twse_daily") == "twse_daily"
+    assert resolve_job("NoSuchCrawler") is None
+
+
+async def test_run_one_accepts_crawler_class_name(monkeypatch):
+    calls = []
+
+    async def fake_job():
+        return 1
+
+    async def fake_publish(name, crawl_date=None, count=0):
+        calls.append(name)
+
+    monkeypatch.setitem(JOBS, "twse_daily", fake_job)
+    monkeypatch.setattr(run_job.publisher, "publish_done", fake_publish)
+    assert await run_job.run_one("TWSEDailyQuoteCrawler") == 1
+    # 通知一律用任務名稱，api 端依任務名稱分派
+    assert calls == ["twse_daily"]

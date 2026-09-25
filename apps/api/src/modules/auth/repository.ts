@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { asc, eq } from 'drizzle-orm'
 import type { Db } from '../../db/client.js'
 import { users } from '../../db/schema/members.js'
 
@@ -26,6 +26,13 @@ export function createUserRepository(db: Db) {
         })
         .returning(publicColumns)
       return row!
+    },
+
+    async listAll() {
+      return db
+        .select({ ...publicColumns, createdAt: users.createdAt, lastLoginAt: users.lastLoginAt })
+        .from(users)
+        .orderBy(asc(users.createdAt))
     },
 
     async findById(id: string): Promise<PublicUser | null> {

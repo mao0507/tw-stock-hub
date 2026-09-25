@@ -26,7 +26,10 @@ JobFn = Callable[[], Awaitable[int | None]]
 
 
 def _crawler(cls: type) -> JobFn:
-    return lambda: cls().run()
+    job = lambda: cls().run()  # noqa: E731
+    # 與 crawler_logs.crawler_name 一致（BaseCrawler 子類別的 crawler_name 屬性）
+    job.crawler_class = getattr(cls, "crawler_name", cls.__name__)  # type: ignore[attr-defined]
+    return job
 
 
 JOBS: dict[str, JobFn] = {
@@ -52,3 +55,16 @@ JOBS: dict[str, JobFn] = {
     "moneydj": _crawler(MoneyDJNewsCrawler),
     "twse_announcement": _crawler(TWSeAnnouncementCrawler),
 }
+
+
+# 爬蟲類別名稱（crawler_logs.crawler_name）→ 任務名稱；admin 以類別名稱觸發時用
+JOB_BY_CRAWLER: dict[str, str] = {
+    fn.crawler_class: name for name, fn in JOBS.items() if hasattr(fn, "crawler_class")
+}
+
+
+def resolve_job(name: str) -> str | None:
+    """接受任務名稱或爬蟲類別名稱，回傳任務名稱；都不是則 None。"""
+    if name in JOBS:
+        return name
+    return JOB_BY_CRAWLER.get(name)

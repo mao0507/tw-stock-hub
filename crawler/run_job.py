@@ -15,7 +15,7 @@ from config import settings
 from db.connection import engine, get_session
 from monitor.logger import setup_logger
 from pipeline.notify import publisher
-from scheduler.jobs import JOBS
+from scheduler.jobs import JOBS, resolve_job
 
 # 先把一筆 pending 改成 running 再執行，避免兩次輪詢重複撿到同一筆
 CLAIM_SQL = text("""
@@ -33,12 +33,13 @@ FINISH_SQL = text("""
 
 
 async def run_one(name: str) -> int | None:
-    job = JOBS.get(name)
-    if job is None:
+    """執行任務；name 可為任務名稱（twse_daily）或爬蟲類別名稱（TWSEDailyQuoteCrawler）。"""
+    job_name = resolve_job(name)
+    if job_name is None:
         raise ValueError(f"未知的 job: {name}（可用：{', '.join(sorted(JOBS))}）")
-    count = await job()
+    count = await JOBS[job_name]()
     # 以任務名稱統一通知 api（清快取、除權息後重算股利等）；個別爬蟲自發的通知保留，重複無害
-    await publisher.publish_done(name, count=count or 0)
+    await publisher.publish_done(job_name, count=count or 0)
     return count
 
 

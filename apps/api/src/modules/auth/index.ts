@@ -7,6 +7,9 @@ import type { Db } from '../../db/client.js'
 import { AUTH_COOKIE, type AuthEnv, type AuthPayload, requireAuth } from '../../middleware/auth.js'
 import { createUserRepository } from './repository.js'
 
+/** 供 admin 模組列出使用者（唯讀） */
+export const listUsers = (db: Db) => createUserRepository(db).listAll()
+
 const REDIRECT_COOKIE = 'login_redirect'
 
 /** 只接受站內絕對路徑（/foo），擋掉 //host、/\host、完整網址等 open redirect。 */

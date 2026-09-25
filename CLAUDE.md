@@ -30,15 +30,15 @@ configs/        eslint / tailwind / tsconfig 共用設定
 
 ## 分階段
 
-- Phase 1：骨架（已建）→ 待辦見下方
+- Phase 1：已完成（#2–#16）
 - Phase 2：技術指標、RS、screener
 - Phase 3：Alert/通知、Telegram、backtest、score、news、分點（含 on-demand 分點爬取）
 
 ### Phase 1 待辦
 
 - [x] portfolio 模組：自選分組（#10）、買入/賣出/重算/P&L/除息日股利（#11–#13）
-- [ ] stock 模組：搬 web 目前用到的行情/法人/融資 API（參考 `../taiwan-stock-platform/apps/stock-api-service`）
-- [ ] admin 模組：搬爬蟲監控、資料健康檢查 API（admin 前端目前打的是舊路由）
+- [x] stock 模組：搜尋/個股/K 線、籌碼、基本面、大盤、排行、除權息行事曆（#4–#9）
+- [x] admin 模組：爬蟲紀錄/彙總、資料健康、唯讀使用者清單、手動觸發佇列（#15）
 - [x] `packages/api-client`：單一 `apiClient`、純 cookie，401 導向 `/api/auth/google`（#3）
 - [x] web `/portfolio` 頁面：持股總覽、買賣紀錄、已出清、股利明細（#11–#13）
 - [x] 爬蟲連續失敗告警改由 `crawler_logs` 計算（#16）

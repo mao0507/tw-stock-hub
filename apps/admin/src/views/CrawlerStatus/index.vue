@@ -23,6 +23,19 @@ interface CrawlerSummary {
   lastRunAt: string | null
   lastStatus: 'success' | 'failed' | 'partial' | 'never'
   lastRecords: number | null
+  lastSuccessAt: string | null
+  consecutiveFailures: number
+}
+
+/** 手動觸發佇列（stocks.pending_jobs），crawler 每分鐘輪詢執行 */
+interface PendingJob {
+  id: number
+  jobName: string
+  status: 'pending' | 'running' | 'success' | 'failed'
+  result: string | null
+  createdAt: string
+  startedAt: string | null
+  finishedAt: string | null
 }
 
 interface PaginatedCrawlerLogs {
@@ -33,6 +46,7 @@ interface PaginatedCrawlerLogs {
 }
 
 const summaries = ref<CrawlerSummary[]>([])
+const jobs = ref<PendingJob[]>([])
 const failureLogs = ref<CrawlerLog[]>([])
 const isLoading = ref(false)
 const triggerLoading = ref<string | null>(null)
@@ -119,8 +133,24 @@ async function fetchLogs(): Promise<void> {
   }
 }
 
+async function fetchJobs(): Promise<void> {
+  try {
+    const { data } = await axios.get<PendingJob[]>('/api/admin/jobs')
+    jobs.value = data
+  } catch {
+    jobs.value = []
+  }
+}
+
 async function fetchData(): Promise<void> {
-  await Promise.all([fetchSummaries(), fetchFailureLogs(), fetchLogs()])
+  await Promise.all([fetchSummaries(), fetchFailureLogs(), fetchLogs(), fetchJobs()])
+}
+
+const JOB_STATUS_LABEL: Record<PendingJob['status'], string> = {
+  pending: '排隊中',
+  running: '執行中',
+  success: '完成',
+  failed: '失敗',
 }
 
 function applyFilters(): void {
@@ -162,9 +192,10 @@ async function confirmTrigger(): Promise<void> {
   triggerLoading.value = crawlerName
   triggerResult.value = null
   try {
-    const { data } = await axios.post<{ count: number }>('/api/admin/trigger-crawler', { crawlerName })
-    triggerResult.value = { crawler: crawlerName, success: true, message: `執行完成，寫入 ${data.count} 筆` }
-    await fetchData()
+    // 寫入 pending_jobs；crawler 每分鐘輪詢，約 1 分鐘內開始執行，結果見下方「手動觸發紀錄」
+    await axios.post('/api/admin/jobs', { job: crawlerName })
+    triggerResult.value = { crawler: crawlerName, success: true, message: '已排入佇列，約 1 分鐘內開始執行' }
+    await fetchJobs()
   } catch {
     triggerResult.value = { crawler: crawlerName, success: false, message: '觸發失敗' }
   } finally {
@@ -282,7 +313,9 @@ function relativeTime(dateStr: string | null): string {
             <tr>
               <th>爬蟲名稱</th>
               <th>最後執行</th>
+              <th>最後成功</th>
               <th><div class="flex justify-center">狀態</div></th>
+              <th><div class="flex justify-end">連續失敗</div></th>
               <th><div class="flex justify-end">筆數</div></th>
               <th><div class="flex justify-end">操作</div></th>
             </tr>
@@ -294,10 +327,17 @@ function relativeTime(dateStr: string | null): string {
             >
               <td class="font-mono text-xs">{{ s.crawlerName }}</td>
               <td class="text-xs text-gray-400">{{ relativeTime(s.lastRunAt) }}</td>
+              <td class="text-xs text-gray-400">{{ s.lastSuccessAt ? relativeTime(s.lastSuccessAt) : '從未成功' }}</td>
               <td>
                 <div class="flex justify-center">
                   <span :class="statusBadge(s.lastStatus)">{{ statusLabel(s.lastStatus) }}</span>
                 </div>
+              </td>
+              <td
+                class="text-right font-mono text-xs"
+                :class="s.consecutiveFailures > 0 ? 'text-up' : 'text-gray-500'"
+              >
+                {{ s.consecutiveFailures }}
               </td>
               <td class="text-right font-mono text-xs text-gray-400">
                 {{ s.lastRecords?.toLocaleString() ?? '—' }}
@@ -309,10 +349,45 @@ function relativeTime(dateStr: string | null): string {
                     class="btn-ghost px-2.5 py-1 text-xs"
                     @click="triggerCrawler(s.crawlerName)"
                   >
-                    {{ triggerLoading === s.crawlerName ? '執行中…' : '觸發' }}
+                    {{ triggerLoading === s.crawlerName ? '送出中…' : '觸發' }}
                   </button>
                 </div>
               </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section v-if="jobs.length">
+      <h2 class="mb-3 font-display text-xs font-bold uppercase tracking-wide text-gray-500">
+        手動觸發紀錄
+      </h2>
+      <div class="card overflow-hidden p-0">
+        <table class="table-modern">
+          <thead>
+            <tr>
+              <th>任務</th>
+              <th>送出時間</th>
+              <th><div class="flex justify-center">狀態</div></th>
+              <th>結果</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="j in jobs"
+              :key="j.id"
+            >
+              <td class="font-mono text-xs">{{ j.jobName }}</td>
+              <td class="text-xs text-gray-400">{{ relativeTime(j.createdAt) }}</td>
+              <td>
+                <div class="flex justify-center">
+                  <span :class="statusBadge(j.status === 'running' || j.status === 'pending' ? 'partial' : j.status)">
+                    {{ JOB_STATUS_LABEL[j.status] }}
+                  </span>
+                </div>
+              </td>
+              <td class="max-w-xs truncate text-xs text-gray-400" :title="j.result ?? ''">{{ j.result ?? '—' }}</td>
             </tr>
           </tbody>
         </table>

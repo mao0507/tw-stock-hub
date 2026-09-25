@@ -168,3 +168,17 @@ export const sectorPerformance = stocksSchema.table('sector_performance', {
   volume: bigint('volume', { mode: 'number' }),
   value: bigint('value', { mode: 'number' }),
 })
+
+export const crawlerLogs = stocksSchema.table('crawler_logs', {
+  id: serial('id').primaryKey(),
+  crawlerName: varchar('crawler_name', { length: 100 }).notNull(),
+  runAt: timestamp('run_at', { withTimezone: true }).notNull(),
+  status: text('status').notNull(),
+  recordsCount: integer('records_count'),
+  errorMessage: text('error_message'),
+  durationMs: integer('duration_ms'),
+})
+
+export const news = stocksSchema.table('news', {
+  publishedAt: timestamp('published_at', { withTimezone: true }).notNull(),
+})

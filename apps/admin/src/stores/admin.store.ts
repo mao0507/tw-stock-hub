@@ -24,10 +24,8 @@ export const useAdminStore = defineStore('admin', () => {
   const isLoading = ref(false)
 
   async function checkServices(): Promise<void> {
-    const endpoints = [
-      { name: 'Stock API', url: '/health/stock' },
-      { name: 'Auth Service', url: '/health/auth' },
-    ]
+    // 後端為單一 api 服務（stock / auth / portfolio / admin 模組），健康檢查同時確認 DB 連線
+    const endpoints = [{ name: 'API', url: '/health' }]
 
     services.value = await Promise.all(
       endpoints.map(async ({ name, url }) => {
@@ -45,9 +43,10 @@ export const useAdminStore = defineStore('admin', () => {
   async function fetchTodayLogs(): Promise<void> {
     isLoading.value = true
     try {
-      const today = new Date().toISOString().split('T')[0]
+      // 以台北時區的「今天」查詢；API 只接受含時區的時間
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' }).format(new Date())
       const { data } = await axios.get<{ items: CrawlerLog[] }>('/api/admin/crawler-logs', {
-        params: { from: `${today}T00:00:00`, to: `${today}T23:59:59`, pageSize: 100 },
+        params: { from: `${today}T00:00:00+08:00`, to: `${today}T23:59:59+08:00`, pageSize: 100 },
       })
       todayLogs.value = data.items
     } catch {
