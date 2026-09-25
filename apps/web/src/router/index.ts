@@ -64,6 +64,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '自選股', requiresAuth: true },
       },
       {
+        path: 'portfolio',
+        name: 'portfolio',
+        component: () => import('@/views/Portfolio/index.vue'),
+        meta: { title: '我的持股', requiresAuth: true },
+      },
+      {
         path: 'alerts',
         name: 'alerts',
         component: () => import('@/views/Alerts/index.vue'),

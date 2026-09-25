@@ -106,3 +106,13 @@ export async function waitFor(check: () => Promise<boolean>, timeoutMs = 5000) {
   }
   throw new Error(`waitFor timeout after ${timeoutMs}ms`)
 }
+
+/** 建立 members.users 使用者並回傳其 id 與登入 cookie（portfolio 資料以 FK 綁使用者）。 */
+export async function createTestUser(admin: postgres.Sql, email: string) {
+  const [row] = await admin`
+    INSERT INTO members.users (email, google_id, nickname)
+    VALUES (${email}, ${`g-${email}`}, ${email.split('@')[0]!})
+    RETURNING id`
+  const id = row!.id as string
+  return { id, cookie: await authCookie({ sub: id, email }) }
+}

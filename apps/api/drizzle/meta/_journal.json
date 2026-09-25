@@ -15,6 +15,13 @@
       "when": 1790267077383,
       "tag": "0001_user_last_login",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790308487202,
+      "tag": "0002_holdings_cost_basis",
+      "breakpoints": true
     }
   ]
 }

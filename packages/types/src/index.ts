@@ -4,6 +4,7 @@ export type * from './stock.types'
 export type * from './user.types'
 export type * from './news.types'
 export type * from './screener.types'
+export type * from './portfolio.types'
 
 export {
   NEWS_SOURCE_LABEL,

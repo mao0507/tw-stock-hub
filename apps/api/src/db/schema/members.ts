@@ -106,6 +106,8 @@ export const holdings = members.table(
     stockId: varchar('stock_id', { length: 10 }).notNull(),
     shares: integer('shares').notNull(),
     avgCost: numeric('avg_cost', { precision: 12, scale: 4 }).notNull(),
+    /** 持有部位總成本（含手續費）；另存以免 avg_cost 四捨五入累積誤差 */
+    costBasis: numeric('cost_basis', { precision: 16, scale: 2 }).notNull().default('0'),
     realizedPnl: numeric('realized_pnl', { precision: 14, scale: 2 }).notNull().default('0'),
     /** 依除息日持有股數計算的累計現金股利 */
     earnedDividend: numeric('earned_dividend', { precision: 14, scale: 2 }).notNull().default('0'),

@@ -46,6 +46,7 @@ const navItems = [
   { name: 'institutional', label: '法人', icon: 'M3 21h18M5 21V9l7-5 7 5v12M9 21v-6h6v6' },
   { name: 'margin', label: '融資券', icon: 'M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6' },
   { name: 'calendar', label: '行事曆', icon: 'M3 9h18M7 3v3M17 3v3M5 5h14a1 1 0 011 1v13a1 1 0 01-1 1H5a1 1 0 01-1-1V6a1 1 0 011-1z' },
+  { name: 'portfolio', label: '持股', icon: 'M21 12V7H5a2 2 0 010-4h14v4M3 5v14a2 2 0 002 2h16v-5M18 12a2 2 0 000 4h4v-4z' },
   { name: 'watchlist', label: '自選股', icon: 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z' },
 ]
 </script>

@@ -1,0 +1,174 @@
+import { and, asc, eq, sql } from 'drizzle-orm'
+import { HTTPException } from 'hono/http-exception'
+import type { Db } from '../../db/client.js'
+import { holdingLots, holdings } from '../../db/schema/members.js'
+import { stocks } from '../../db/schema/stocks.js'
+import { replay, round } from './replay.js'
+
+/**
+ * 上限讓最大成本（價 × 股）落在 holdings.cost_basis numeric(16,2) 與 shares int4 內，
+ * 超過時回 400 而不是讓 DB 溢位變成 500。
+ */
+export const MAX_PRICE = 100_000
+export const MAX_TOTAL_SHARES = 100_000_000
+
+const badRequest = (error: string) =>
+  new HTTPException(400, { res: Response.json({ error }, { status: 400 }) })
+
+type Tx = Parameters<Parameters<Db['transaction']>[0]>[0]
+
+export type LotInput = { stockId: string; boughtAt: string; price: number; shares: number; fee: number }
+export type LotDto = LotInput & { id: string }
+
+const lotColumns = {
+  id: holdingLots.id,
+  stockId: holdingLots.stockId,
+  boughtAt: holdingLots.boughtAt,
+  price: holdingLots.price,
+  shares: holdingLots.shares,
+  fee: holdingLots.fee,
+}
+
+const toLot = (r: { id: string; stockId: string; boughtAt: string; price: string; shares: number; fee: string }): LotDto => ({
+  ...r,
+  price: Number(r.price),
+  fee: Number(r.fee),
+})
+
+/** 同一使用者同一檔股票的重算互斥，避免並發修改算出錯的彙總 */
+async function lockPosition(tx: Tx, userId: string, stockId: string) {
+  await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${userId} || ':' || ${stockId}))`)
+}
+
+/** 由 holding_lots 重播，覆寫 holdings 彙總；沒有持股則刪除彙總列。 */
+async function recompute(tx: Tx, userId: string, stockId: string) {
+  const lots = await tx
+    .select({ date: holdingLots.boughtAt, price: holdingLots.price, shares: holdingLots.shares, fee: holdingLots.fee })
+    .from(holdingLots)
+    .where(and(eq(holdingLots.userId, userId), eq(holdingLots.stockId, stockId)))
+  const pos = replay(lots.map((l) => ({ date: l.date, price: Number(l.price), shares: l.shares, fee: Number(l.fee) })))
+
+  if (pos.shares > MAX_TOTAL_SHARES) {
+    throw badRequest(`${stockId} 累計股數超過上限 ${MAX_TOTAL_SHARES.toLocaleString()} 股`)
+  }
+  if (pos.shares === 0) {
+    await tx.delete(holdings).where(and(eq(holdings.userId, userId), eq(holdings.stockId, stockId)))
+    return
+  }
+  const values = {
+    shares: pos.shares,
+    avgCost: String(pos.avgCost),
+    costBasis: String(pos.costBasis),
+    updatedAt: new Date(),
+  }
+  await tx
+    .insert(holdings)
+    .values({ userId, stockId, ...values })
+    .onConflictDoUpdate({ target: [holdings.userId, holdings.stockId], set: values })
+}
+
+export function createPortfolioRepository(db: Db) {
+  /** 在 transaction 內變更批次並重算受影響股票的持股 */
+  async function mutate<T>(userId: string, stockIds: string[], fn: (tx: Tx) => Promise<T>): Promise<T> {
+    return db.transaction(async (tx) => {
+      const unique = [...new Set(stockIds)].sort()
+      for (const s of unique) await lockPosition(tx, userId, s)
+      const result = await fn(tx)
+      for (const s of unique) await recompute(tx, userId, s)
+      return result
+    })
+  }
+
+  return {
+    async stockExists(stockId: string): Promise<boolean> {
+      const [row] = await db.select({ id: stocks.id }).from(stocks).where(eq(stocks.id, stockId))
+      return !!row
+    },
+
+    async listLots(userId: string, stockId?: string): Promise<LotDto[]> {
+      const rows = await db
+        .select(lotColumns)
+        .from(holdingLots)
+        .where(and(eq(holdingLots.userId, userId), stockId ? eq(holdingLots.stockId, stockId) : undefined))
+        .orderBy(asc(holdingLots.boughtAt), asc(holdingLots.createdAt))
+      return rows.map(toLot)
+    },
+
+    async createLot(userId: string, input: LotInput): Promise<LotDto> {
+      return mutate(userId, [input.stockId], async (tx) => {
+        const [row] = await tx
+          .insert(holdingLots)
+          .values({ userId, ...input, price: String(input.price), fee: String(input.fee) })
+          .returning(lotColumns)
+        return toLot(row!)
+      })
+    },
+
+    /** 找不到（或不屬於此使用者）回 null */
+    async updateLot(userId: string, id: string, patch: Partial<Omit<LotInput, 'stockId'>>): Promise<LotDto | null> {
+      const [current] = await db
+        .select({ stockId: holdingLots.stockId })
+        .from(holdingLots)
+        .where(and(eq(holdingLots.id, id), eq(holdingLots.userId, userId)))
+      if (!current) return null
+      return mutate(userId, [current.stockId], async (tx) => {
+        const [row] = await tx
+          .update(holdingLots)
+          .set({
+            ...patch,
+            price: patch.price === undefined ? undefined : String(patch.price),
+            fee: patch.fee === undefined ? undefined : String(patch.fee),
+          })
+          .where(and(eq(holdingLots.id, id), eq(holdingLots.userId, userId)))
+          .returning(lotColumns)
+        return row ? toLot(row) : null
+      })
+    },
+
+    async deleteLot(userId: string, id: string): Promise<boolean> {
+      const [current] = await db
+        .select({ stockId: holdingLots.stockId })
+        .from(holdingLots)
+        .where(and(eq(holdingLots.id, id), eq(holdingLots.userId, userId)))
+      if (!current) return false
+      return mutate(userId, [current.stockId], async (tx) => {
+        const rows = await tx
+          .delete(holdingLots)
+          .where(and(eq(holdingLots.id, id), eq(holdingLots.userId, userId)))
+          .returning({ id: holdingLots.id })
+        return rows.length > 0
+      })
+    },
+
+    /** 持股 + 最新收盤價（同一 DB 內 LATERAL JOIN stocks schema） */
+    async holdingsWithPrice(userId: string) {
+      const rows = await db.execute<{
+        stock_id: string
+        name: string | null
+        shares: number
+        avg_cost: string
+        cost_basis: string
+        close: string | null
+        price_date: string | null
+      }>(sql`
+        SELECT h.stock_id, s.name, h.shares, h.avg_cost, h.cost_basis, q.close, q.date::text AS price_date
+        FROM members.holdings h
+        LEFT JOIN stocks.stocks s ON s.id = h.stock_id
+        LEFT JOIN LATERAL (
+          SELECT close, date FROM stocks.daily_quotes
+          WHERE stock_id = h.stock_id ORDER BY date DESC LIMIT 1
+        ) q ON TRUE
+        WHERE h.user_id = ${userId}
+        ORDER BY h.stock_id`)
+      return rows.map((r) => ({
+        stockId: r.stock_id,
+        name: r.name ?? r.stock_id,
+        shares: r.shares,
+        avgCost: round(Number(r.avg_cost), 4),
+        costBasis: Number(r.cost_basis),
+        price: r.close === null ? null : Number(r.close),
+        priceDate: r.price_date,
+      }))
+    },
+  }
+}

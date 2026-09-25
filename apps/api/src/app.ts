@@ -7,6 +7,7 @@ import type { Config } from './config.js'
 import type { Db } from './db/client.js'
 import { createAdminRoutes } from './modules/admin/index.js'
 import { createAuthRoutes } from './modules/auth/index.js'
+import { createPortfolioRoutes } from './modules/portfolio/index.js'
 import { createStockRoutes } from './modules/stock/index.js'
 
 export type AppDeps = {
@@ -30,6 +31,7 @@ export function createApp({ config, db, ping, googleOAuth }: AppDeps) {
 
   app.route('/api/auth', createAuthRoutes(config, db, googleOAuth))
   app.route('/api/admin', createAdminRoutes(db, config.adminApiKey))
+  app.route('/api/portfolio', createPortfolioRoutes(db, config.jwtSecret))
   // ponytail: Q27 決議目前只在本機跑，stock 路由暫不驗證；上線前改掛 requireAuth
   app.route('/api', createStockRoutes(db))
 

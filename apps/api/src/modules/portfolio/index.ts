@@ -1,0 +1,140 @@
+import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
+import type { Db } from '../../db/client.js'
+import { type AuthEnv, requireAuth } from '../../middleware/auth.js'
+import { createPortfolioRepository, MAX_PRICE, MAX_TOTAL_SHARES } from './repository.js'
+import { summarize } from './summary.js'
+
+/** 台北時區的今天（YYYY-MM-DD） */
+export const todayInTaipei = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' }).format(new Date())
+
+const tradeDate = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, '日期格式須為 YYYY-MM-DD')
+  // Date.parse 會接受 2026-02-30 這類不存在的日期，須比對回轉結果
+  .refine((d) => {
+    const parsed = new Date(`${d}T00:00:00Z`)
+    return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === d
+  }, '日期不存在')
+  .refine((d) => d <= todayInTaipei(), '日期不可晚於今天')
+
+const StockId = z.string().regex(/^[0-9A-Z]{4,6}$/, '股票代號格式錯誤')
+
+const LotFields = {
+  boughtAt: tradeDate,
+  price: z.number().positive().max(MAX_PRICE),
+  shares: z.number().int().positive().max(MAX_TOTAL_SHARES),
+  fee: z.number().min(0).max(1_000_000),
+}
+
+const LotCreate = z.object({ stockId: StockId, ...LotFields, fee: LotFields.fee.default(0) })
+const LotPatch = z.object(LotFields).partial().refine((v) => Object.keys(v).length > 0, '至少修改一個欄位')
+
+const Lot = z.object({
+  id: z.string().uuid(),
+  stockId: z.string(),
+  boughtAt: z.string(),
+  price: z.number(),
+  shares: z.number(),
+  fee: z.number(),
+})
+
+const Holding = z.object({
+  stockId: z.string(),
+  name: z.string(),
+  shares: z.number(),
+  avgCost: z.number(),
+  costBasis: z.number(),
+  price: z.number().nullable(),
+  priceDate: z.string().nullable(),
+  stale: z.boolean(),
+  marketValue: z.number().nullable(),
+  unrealizedPnl: z.number().nullable(),
+  returnPct: z.number().nullable(),
+  weight: z.number().nullable(),
+})
+
+const Holdings = z.object({
+  items: z.array(Holding),
+  totals: z.object({
+    costBasis: z.number(),
+    marketValue: z.number(),
+    unrealizedPnl: z.number(),
+    returnPct: z.number().nullable(),
+    staleCount: z.number(),
+  }),
+})
+
+const ErrorBody = z.object({ error: z.string() })
+const IdParam = z.object({ id: z.string().uuid() })
+const json = <T extends z.ZodType>(schema: T, description: string) => ({
+  description,
+  content: { 'application/json': { schema } },
+})
+const body = <T extends z.ZodType>(schema: T) => ({ body: { content: { 'application/json': { schema } }, required: true } })
+
+const routes = {
+  holdings: createRoute({
+    method: 'get',
+    path: '/holdings',
+    responses: { 200: json(Holdings, '持股總覽（含最新價、損益、配置）') },
+  }),
+  listLots: createRoute({
+    method: 'get',
+    path: '/lots',
+    request: { query: z.object({ stockId: StockId.optional() }) },
+    responses: { 200: json(z.array(Lot), '買入批次（依日期）') },
+  }),
+  createLot: createRoute({
+    method: 'post',
+    path: '/lots',
+    request: body(LotCreate),
+    responses: { 201: json(Lot, '已建立'), 400: json(ErrorBody, '驗證失敗') },
+  }),
+  updateLot: createRoute({
+    method: 'patch',
+    path: '/lots/{id}',
+    request: { params: IdParam, ...body(LotPatch) },
+    responses: { 200: json(Lot, '已更新'), 404: json(ErrorBody, '找不到批次') },
+  }),
+  deleteLot: createRoute({
+    method: 'delete',
+    path: '/lots/{id}',
+    request: { params: IdParam },
+    responses: { 204: { description: '已刪除' }, 404: json(ErrorBody, '找不到批次') },
+  }),
+}
+
+export function createPortfolioRoutes(db: Db, jwtSecret: string) {
+  const app = new OpenAPIHono<AuthEnv>()
+  const repo = createPortfolioRepository(db)
+
+  app.use('*', requireAuth(jwtSecret))
+
+  app.openapi(routes.holdings, async (c) => {
+    const rows = await repo.holdingsWithPrice(c.get('jwtPayload').sub)
+    return c.json(summarize(rows), 200)
+  })
+
+  app.openapi(routes.listLots, async (c) => {
+    const { stockId } = c.req.valid('query')
+    return c.json(await repo.listLots(c.get('jwtPayload').sub, stockId), 200)
+  })
+
+  app.openapi(routes.createLot, async (c) => {
+    const input = c.req.valid('json')
+    if (!(await repo.stockExists(input.stockId))) return c.json({ error: `查無股票 ${input.stockId}` }, 400)
+    return c.json(await repo.createLot(c.get('jwtPayload').sub, input), 201)
+  })
+
+  app.openapi(routes.updateLot, async (c) => {
+    const lot = await repo.updateLot(c.get('jwtPayload').sub, c.req.valid('param').id, c.req.valid('json'))
+    return lot ? c.json(lot, 200) : c.json({ error: '找不到批次' }, 404)
+  })
+
+  app.openapi(routes.deleteLot, async (c) => {
+    const ok = await repo.deleteLot(c.get('jwtPayload').sub, c.req.valid('param').id)
+    return ok ? c.body(null, 204) : c.json({ error: '找不到批次' }, 404)
+  })
+
+  return app
+}

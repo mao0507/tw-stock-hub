@@ -1,0 +1,1 @@
+ALTER TABLE "members"."holdings" ADD COLUMN "cost_basis" numeric(16, 2) DEFAULT '0' NOT NULL;
