@@ -39,7 +39,9 @@ export const pendingJobs = stocksSchema.table('pending_jobs', {
 export const exDividendCalendar = stocksSchema.table('ex_dividend_calendar', {
   exDate: date('ex_date').notNull(),
   stockId: varchar('stock_id', { length: 10 }).notNull(),
+  stockName: varchar('stock_name', { length: 50 }),
   cashDividend: numeric('cash_dividend', { precision: 10, scale: 4 }),
+  stockDividendRatio: numeric('stock_dividend_ratio', { precision: 12, scale: 8 }),
 })
 
 export const institutionalTrading = stocksSchema.table('institutional_trading', {
