@@ -4,11 +4,10 @@ import type { Db } from '../../db/client.js'
 import { dailyQuotes, marketIndex, sectorPerformance, stocks } from '../../db/schema/stocks.js'
 import { monthKey, weekKey } from './candles.js'
 import { round2 } from './fundamentals-calc.js'
-import { cached, ErrorBody, json, num } from './shared.js'
+import { CalendarDate, cached, ErrorBody, json, num } from './shared.js'
 
 // 首頁與大盤（#7）：總覽、歷史、類股熱力圖、類股成分股
 
-const DateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, '日期格式須為 YYYY-MM-DD')
 const NumOrNull = z.number().nullable()
 const HistoryItem = z.object({ date: z.string(), close: z.number(), change: z.number(), changePct: z.number(), totalValue: z.number() })
 
@@ -46,8 +45,8 @@ const routes = {
     request: {
       query: z.object({
         interval: z.enum(['daily', 'weekly', 'monthly']).default('daily'),
-        from: DateStr.optional(),
-        to: DateStr.optional(),
+        from: CalendarDate.optional(),
+        to: CalendarDate.optional(),
         limit: z.coerce.number().int().min(1).max(365).default(60),
       }),
     },

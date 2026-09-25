@@ -6,6 +6,15 @@ import { responseCache } from '../../lib/cache.js'
 
 export const StockId = z.string().regex(/^[0-9A-Z]{4,6}$/, '股票代號格式錯誤')
 export const IdParam = z.object({ id: StockId })
+
+/** YYYY-MM-DD 且為真實存在的日期（2026-02-30 這類會被拒絕，避免 DB 報錯變 500） */
+export const CalendarDate = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, '日期格式須為 YYYY-MM-DD')
+  .refine((d) => {
+    const t = new Date(`${d}T00:00:00Z`)
+    return !Number.isNaN(t.getTime()) && t.toISOString().slice(0, 10) === d
+  }, '日期不存在')
 export const ErrorBody = z.object({ error: z.string() })
 
 export const json = <T extends z.ZodType>(schema: T, description: string) => ({

@@ -3,6 +3,7 @@ import type { Db } from '../../db/client.js'
 import { registerChipRoutes } from './chips.js'
 import { registerFundamentalRoutes } from './fundamentals.js'
 import { registerMarketRoutes } from './market.js'
+import { registerRankingRoutes } from './rankings.js'
 import { registerOverviewRoutes } from './overview.js'
 
 // 全市場公開資料（Q27：目前只在本機跑，暫不驗證；上線前掛 requireAuth）
@@ -12,5 +13,6 @@ export function createStockRoutes(db: Db) {
   registerChipRoutes(app, db)
   registerFundamentalRoutes(app, db)
   registerMarketRoutes(app, db)
+  registerRankingRoutes(app, db)
   return app
 }

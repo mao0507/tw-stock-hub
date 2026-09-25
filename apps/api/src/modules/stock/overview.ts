@@ -3,11 +3,10 @@ import { and, asc, desc, eq, gte, ilike, lte, or, sql } from 'drizzle-orm'
 import type { Db } from '../../db/client.js'
 import { dailyQuotes, stocks } from '../../db/schema/stocks.js'
 import { aggregate, type Candle, monthKey, weekKey } from './candles.js'
-import { cached, ErrorBody, findActiveStock, IdParam, json, num } from './shared.js'
+import { CalendarDate, cached, ErrorBody, findActiveStock, IdParam, json, num } from './shared.js'
 
 // 搜尋、個股資料、K 線（#4）
 
-const DateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, '日期格式須為 YYYY-MM-DD')
 const SearchItem = z.object({ id: z.string(), name: z.string(), market: z.string(), sector: z.string().nullable() })
 const CandleSchema = z.object({
   date: z.string(),
@@ -52,8 +51,8 @@ const routes = {
       params: IdParam,
       query: z.object({
         interval: z.enum(['daily', 'weekly', 'monthly']).default('daily'),
-        from: DateStr.optional(),
-        to: DateStr.optional(),
+        from: CalendarDate.optional(),
+        to: CalendarDate.optional(),
         limit: z.coerce.number().int().min(1).max(500).default(60),
       }),
     },

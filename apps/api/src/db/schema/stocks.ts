@@ -45,6 +45,12 @@ export const exDividendCalendar = stocksSchema.table('ex_dividend_calendar', {
 export const institutionalTrading = stocksSchema.table('institutional_trading', {
   date: date('date').notNull(),
   stockId: varchar('stock_id', { length: 10 }).notNull(),
+  foreignBuy: bigint('foreign_buy', { mode: 'number' }).notNull(),
+  foreignSell: bigint('foreign_sell', { mode: 'number' }).notNull(),
+  trustBuy: bigint('trust_buy', { mode: 'number' }).notNull(),
+  trustSell: bigint('trust_sell', { mode: 'number' }).notNull(),
+  dealerBuy: bigint('dealer_buy', { mode: 'number' }).notNull(),
+  dealerSell: bigint('dealer_sell', { mode: 'number' }).notNull(),
   foreignNet: bigint('foreign_net', { mode: 'number' }).notNull(),
   trustNet: bigint('trust_net', { mode: 'number' }).notNull(),
   dealerNet: bigint('dealer_net', { mode: 'number' }).notNull(),
