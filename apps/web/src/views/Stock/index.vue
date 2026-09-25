@@ -13,6 +13,7 @@ import {
 import { stockApi } from '@tw-stock-hub/api-client'
 import OverviewTab from './OverviewTab.vue'
 import FundamentalTab from './FundamentalTab.vue'
+import StockQuickActions from './StockQuickActions.vue'
 import type {
   BrokerRanking, BrokerDetail, SectorStockItem, BrokerConcentration, BrokerStreak,
   DividendItem, BacktestResult,
@@ -33,7 +34,6 @@ const watchlistStore = useWatchlistStore()
 const authStore = useAuthStore()
 
 const { currentStock, quoteData, institutionalData, marginData, isLoading } = storeToRefs(stockStore)
-const { watchlist } = storeToRefs(watchlistStore)
 const { isLoggedIn } = storeToRefs(authStore)
 
 const activeTab = ref<TabKey>('overview')
@@ -161,9 +161,6 @@ async function toggleBrokerDetail(brokerName: string): Promise<void> {
   }
 }
 
-const isInWatchlist = computed(() =>
-  watchlist.value.some(w => w.stockId === stockId.value)
-)
 
 // ── 報價衍生指標
 const q = computed(() => currentStock.value?.latestQuote ?? null)
@@ -244,14 +241,6 @@ async function onIntervalChange(iv: Interval): Promise<void> {
   await stockStore.fetchQuote(stockId.value, { interval: iv, limit: 250 })
 }
 
-async function toggleWatchlist(): Promise<void> {
-  if (!isLoggedIn.value) return
-  if (isInWatchlist.value) {
-    await watchlistStore.remove(stockId.value)
-  } else {
-    await watchlistStore.add(stockId.value)
-  }
-}
 
 const instColumns = [
   { key: 'date', label: '日期', align: 'left' as const },
@@ -358,14 +347,10 @@ const tabs: { key: TabKey; label: string }[] = [
           </div>
         </div>
 
-        <AppButton
-          v-if="isLoggedIn"
-          :variant="isInWatchlist ? 'default' : 'outline'"
-          size="sm"
-          @click="toggleWatchlist"
-        >
-          {{ isInWatchlist ? '★ 已追蹤' : '☆ 加入自選' }}
-        </AppButton>
+        <StockQuickActions
+          :stock-id="stockId"
+          :latest-close="currentStock?.id === stockId ? q?.close ?? null : null"
+        />
       </div>
 
       <!-- 指標條 -->

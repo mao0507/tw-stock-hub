@@ -10,6 +10,8 @@ interface Props {
   lot?: HoldingLot | null
   /** 新增時預填的股票代號 */
   defaultStockId?: string
+  /** 新增時預填的成交價（例如個股頁的最新收盤價） */
+  defaultPrice?: number | null
   submit: (form: CreateLotForm) => Promise<void>
 }
 
@@ -33,7 +35,7 @@ watch(
     const l = props.lot
     form.stockId = l?.stockId ?? props.defaultStockId ?? ''
     form.boughtAt = l?.boughtAt ?? today()
-    form.price = l ? String(l.price) : ''
+    form.price = l ? String(l.price) : props.defaultPrice != null ? String(props.defaultPrice) : ''
     form.shares = l ? String(l.shares) : ''
     form.fee = l ? String(l.fee) : ''
     feeTouched.value = isEdit.value
@@ -92,7 +94,7 @@ async function onSubmit(): Promise<void> {
 <template>
   <AppModal
     :open="open"
-    :title="isEdit ? `編輯買入批次（${lot?.stockId}）` : '記錄買入'"
+    :title="isEdit ? `編輯買入批次（${lot?.stockId}）` : defaultStockId ? `記錄買入（${defaultStockId}）` : '記錄買入'"
     @close="emit('close')"
   >
     <form
@@ -109,7 +111,7 @@ async function onSubmit(): Promise<void> {
       </div>
 
       <AppInput
-        v-if="!isEdit"
+        v-if="!isEdit && !defaultStockId"
         v-model="form.stockId"
         label="股票代號"
         placeholder="例如 2330"
