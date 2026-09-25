@@ -81,9 +81,9 @@ function fmtBroker(name: string): string {
                 @click="$router.push({ name: 'broker-profile', params: { name: b.brokerName } })"
               >
                 <td class="w-6 py-1.5 text-center text-xs text-gray-400">{{ i + 1 }}</td>
-                <td class="py-1.5 text-gray-700 hover:text-up">
+                <td class="py-1.5 text-gray-700 hover:text-ink">
                   {{ fmtBroker(b.brokerName) }}
-                  <span v-if="b.tag" class="ml-1 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-600">{{ b.tag }}</span>
+                  <span v-if="b.tag" class="ml-1 rounded bg-[#b7791f]/10 px-1.5 py-0.5 text-[10px] font-medium text-[#9a6416]">{{ b.tag }}</span>
                 </td>
                 <td class="py-1.5 text-center text-xs text-gray-400">{{ b.stockCount }}檔</td>
                 <td class="py-1.5 text-right font-mono text-up">{{ fmtShares(b.net) }}</td>
@@ -102,9 +102,9 @@ function fmtBroker(name: string): string {
                 @click="$router.push({ name: 'broker-profile', params: { name: b.brokerName } })"
               >
                 <td class="w-6 py-1.5 text-center text-xs text-gray-400">{{ i + 1 }}</td>
-                <td class="py-1.5 text-gray-700 hover:text-up">
+                <td class="py-1.5 text-gray-700 hover:text-ink">
                   {{ fmtBroker(b.brokerName) }}
-                  <span v-if="b.tag" class="ml-1 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-600">{{ b.tag }}</span>
+                  <span v-if="b.tag" class="ml-1 rounded bg-[#b7791f]/10 px-1.5 py-0.5 text-[10px] font-medium text-[#9a6416]">{{ b.tag }}</span>
                 </td>
                 <td class="py-1.5 text-center text-xs text-gray-400">{{ b.stockCount }}檔</td>
                 <td class="py-1.5 text-right font-mono text-down">{{ fmtShares(b.net) }}</td>
@@ -136,7 +136,7 @@ function fmtBroker(name: string): string {
                   :to="`/stocks/${row.stockId}`"
                   class="flex flex-col"
                 >
-                  <span class="font-medium text-gray-800 hover:text-up">{{ row.stockName }}</span>
+                  <span class="font-medium text-gray-800 hover:text-ink">{{ row.stockName }}</span>
                   <span class="font-mono text-xs text-gray-400">{{ row.stockId }}</span>
                 </router-link>
               </td>

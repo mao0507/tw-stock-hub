@@ -17,13 +17,13 @@ const emit = defineEmits<{ select: [sectorName: string] }>()
 const { chartContainer, chartInstance, setOption, isReady } = useECharts()
 
 function changePctToColor(pct: number): string {
-  if (pct >= 3) return '#D32F2F'
+  if (pct >= 3) return '#a33322'
   if (pct >= 1.5) return STOCK_COLORS.up
-  if (pct >= 0.5) return '#EF9A9A'
-  if (pct > -0.5) return '#E0E0E0'
-  if (pct > -1.5) return '#80CBC4'
+  if (pct >= 0.5) return '#e8b3a6'
+  if (pct > -0.5) return '#e9e2d4'
+  if (pct > -1.5) return '#a8cdb8'
   if (pct > -3) return STOCK_COLORS.down
-  return '#00695C'
+  return '#165c3f'
 }
 
 function textColor(pct: number): string {
@@ -50,7 +50,7 @@ function buildOption(): ECOption {
     backgroundColor: 'transparent',
     tooltip: {
       trigger: 'item',
-      backgroundColor: '#1C2833',
+      backgroundColor: '#1d2420',
       borderColor: 'transparent',
       textStyle: { color: '#fff', fontSize: 12 },
       formatter: (params: unknown) => {

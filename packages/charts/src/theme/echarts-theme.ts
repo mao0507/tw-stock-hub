@@ -1,16 +1,17 @@
 export const STOCK_COLORS = {
-  up: '#e63950',
-  upSoft: 'rgba(230, 57, 80, 0.12)',
-  upMid: 'rgba(230, 57, 80, 0.28)',
-  down: '#10b77a',
-  downSoft: 'rgba(16, 183, 122, 0.12)',
-  downMid: 'rgba(16, 183, 122, 0.28)',
-  flat: '#8B919E',
-  grid: '#ECEEF1',
-  text: '#474C56',
-  textLight: '#8B919E',
-  blue: '#1A6CF5',
-  blueSoft: 'rgba(26, 108, 245, 0.1)',
+  up: '#c2412d',
+  upSoft: 'rgba(194, 65, 45, 0.12)',
+  upMid: 'rgba(194, 65, 45, 0.28)',
+  down: '#1c7c54',
+  downSoft: 'rgba(28, 124, 84, 0.12)',
+  downMid: 'rgba(28, 124, 84, 0.28)',
+  flat: '#75706a',
+  grid: '#ebe4d6',
+  text: '#3a3833',
+  textLight: '#75706a',
+  // 中性強調：墨綠（非漲跌語意的線，例如累計、指數）
+  blue: '#1f4d3a',
+  blueSoft: 'rgba(31, 77, 58, 0.1)',
 } as const
 
 export const BASE_ECHARTS_OPTION = {
@@ -45,7 +46,7 @@ export const BASE_ECHARTS_OPTION = {
   },
   tooltip: {
     trigger: 'axis',
-    backgroundColor: '#1C2833',
+    backgroundColor: '#1d2420',
     borderColor: 'transparent',
     textStyle: { color: '#fff', fontSize: 12 },
     axisPointer: {
@@ -68,3 +69,9 @@ export const MARGIN_COLORS = {
   increase: STOCK_COLORS.upSoft,
   decrease: STOCK_COLORS.downSoft,
 }
+
+/** 配置比例色票：墨綠為主的沉穩色（不帶漲跌語意） */
+export const PIE_PALETTE = [
+  '#1f4d3a', '#4f7f69', '#b7791f', '#2f5d8a', '#8aa89a',
+  '#6b4f8a', '#c9a15e', '#5d8aa8', '#a3b8a5', '#8c6d4f', '#cdc4b1',
+]

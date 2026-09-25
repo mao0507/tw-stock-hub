@@ -1,6 +1,6 @@
 export { useTradingViewChart } from './composables/useTradingViewChart'
 export { useECharts } from './composables/useECharts'
-export { STOCK_COLORS, BASE_ECHARTS_OPTION, INSTITUTIONAL_COLORS, MARGIN_COLORS } from './theme/echarts-theme'
+export { STOCK_COLORS, BASE_ECHARTS_OPTION, INSTITUTIONAL_COLORS, MARGIN_COLORS, PIE_PALETTE } from './theme/echarts-theme'
 export type { ECOption } from './types'
 
 export { default as KLineChart } from './components/KLineChart.vue'

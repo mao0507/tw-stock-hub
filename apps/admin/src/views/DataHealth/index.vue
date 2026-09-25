@@ -117,7 +117,7 @@ function daysBehind(latest: string | null, expected: string): number {
   >
     <div class="flex items-center justify-end gap-2">
       <button
-        :class="['btn-ghost text-xs', autoRefresh && 'text-amber-400']"
+        :class="['btn-ghost text-xs', autoRefresh && 'text-[#9a6416]']"
         @click="toggleAutoRefresh"
       >
         <svg
@@ -150,7 +150,7 @@ function daysBehind(latest: string | null, expected: string): number {
 
     <!-- 資料表健康狀態 -->
     <section>
-      <h2 class="mb-3 font-display text-xs font-bold uppercase tracking-wide text-gray-500">
+      <h2 class="mb-3 font-display text-lg font-extrabold text-gray-900">
         資料表健康狀態
       </h2>
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -163,7 +163,7 @@ function daysBehind(latest: string | null, expected: string): number {
           ]"
         >
           <div class="flex items-center justify-between">
-            <span class="text-sm font-medium text-white">{{ t.label }}</span>
+            <span class="text-sm font-medium text-gray-900">{{ t.label }}</span>
             <span :class="['h-2.5 w-2.5 rounded-full', t.isHealthy ? 'bg-down' : 'bg-up']" />
           </div>
           <div class="mt-2">
@@ -185,7 +185,7 @@ function daysBehind(latest: string | null, expected: string): number {
 
     <!-- 缺漏交易日（各表分開） -->
     <section>
-      <h2 class="mb-3 font-display text-xs font-bold uppercase tracking-wide text-gray-500">
+      <h2 class="mb-3 font-display text-lg font-extrabold text-gray-900">
         缺漏交易日
         <span
           v-if="missingEntries.length"
@@ -228,7 +228,7 @@ function daysBehind(latest: string | null, expected: string): number {
             </div>
           </div>
           <p class="mt-1 text-xs text-gray-500">
-            補爬指令範例：<code class="rounded bg-white/5 px-1.5 py-0.5 font-mono text-gray-300">
+            補爬指令範例：<code class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-gray-700">
               make crawl-backfill CRAWLER=margin_twse DATE=YYYY-MM-DD
             </code>
           </p>
@@ -238,7 +238,7 @@ function daysBehind(latest: string | null, expected: string): number {
 
     <!-- 資料數量異常 -->
     <section>
-      <h2 class="mb-3 font-display text-xs font-bold uppercase tracking-wide text-gray-500">
+      <h2 class="mb-3 font-display text-lg font-extrabold text-gray-900">
         數量異常（低於中位數 60%）
         <span
           v-if="countAnomalies.length"
@@ -266,20 +266,20 @@ function daysBehind(latest: string | null, expected: string): number {
         >
           <table class="w-full text-xs">
             <thead>
-              <tr class="border-b border-white/10 text-left text-gray-500">
+              <tr class="border-b border-paper-line text-left text-gray-500">
                 <th class="pb-2 pr-4">資料表</th>
                 <th class="pb-2 pr-4">日期</th>
                 <th class="pb-2 pr-4 text-right">實際筆數</th>
                 <th class="pb-2 text-right">預期（中位數）</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-white/5">
+            <tbody class="divide-y divide-gray-100">
               <tr
                 v-for="a in countAnomalies"
                 :key="`${a.tableName}-${a.date}`"
               >
-                <td class="py-1.5 pr-4 text-gray-300">{{ a.label }}</td>
-                <td class="py-1.5 pr-4 font-mono text-gray-300">{{ a.date }}</td>
+                <td class="py-1.5 pr-4 text-gray-700">{{ a.label }}</td>
+                <td class="py-1.5 pr-4 font-mono text-gray-700">{{ a.date }}</td>
                 <td class="py-1.5 pr-4 text-right font-mono text-up">{{ a.count.toLocaleString() }}</td>
                 <td class="py-1.5 text-right font-mono text-gray-400">{{ a.expectedCount.toLocaleString() }}</td>
               </tr>

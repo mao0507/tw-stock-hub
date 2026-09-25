@@ -5,7 +5,7 @@ import { cn } from '../../lib/utils'
 
 const buttonVariants = cva(
   cn(
-    'inline-flex items-center justify-center gap-2 rounded-lg font-medium whitespace-nowrap',
+    'inline-flex items-center justify-center gap-2 rounded-xl font-medium whitespace-nowrap',
     'transition-all duration-150 cursor-pointer select-none',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
     'disabled:pointer-events-none disabled:opacity-50',
@@ -13,11 +13,11 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-up text-white hover:bg-up/90 focus-visible:ring-up',
-        outline: 'border border-gray-200 bg-white hover:bg-gray-50 text-gray-900',
+        default: 'bg-ink text-white hover:bg-ink-hover focus-visible:ring-ink',
+        outline: 'border border-gray-200 bg-paper-surface hover:bg-gray-100 text-gray-900',
         ghost: 'hover:bg-gray-100 text-gray-700',
         destructive: 'bg-red-500 text-white hover:bg-red-600',
-        link: 'text-up underline-offset-4 hover:underline p-0 h-auto',
+        link: 'text-ink underline-offset-4 hover:underline p-0 h-auto',
       },
       size: {
         sm: 'h-8 px-3 text-xs',

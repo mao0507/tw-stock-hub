@@ -75,7 +75,7 @@ function onUpdateOpen(value: boolean): void {
             type="button"
             :class="cn(
               'rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors',
-              danger ? 'bg-red-500 hover:bg-red-600' : 'bg-up hover:bg-up/90',
+              danger ? 'bg-red-500 hover:bg-red-600' : 'bg-ink hover:bg-ink-hover',
             )"
             @click="emit('confirm')"
           >

@@ -49,8 +49,8 @@ const isDark = computed(() => props.variant === 'dark')
         :class="cn(
           'flex h-10 w-full items-center justify-between rounded-lg border px-3 text-sm transition-colors outline-none',
           isDark
-            ? 'border-white/10 bg-white/5 text-white focus:border-up/60 data-[state=open]:border-up/60'
-            : 'border-gray-200 bg-white text-gray-900 focus:border-up focus:ring-2 focus:ring-up/20 data-[state=open]:border-up',
+            ? 'border-white/10 bg-white/5 text-white focus:border-ink/60 data-[state=open]:border-ink/60'
+            : 'border-gray-200 bg-white text-gray-900 focus:border-ink focus:ring-2 focus:ring-ink/20 data-[state=open]:border-ink',
           'disabled:cursor-not-allowed disabled:opacity-50',
           props.class,
         )"
@@ -89,8 +89,8 @@ const isDark = computed(() => props.variant === 'dark')
               :class="cn(
                 'relative flex cursor-pointer select-none items-center justify-between rounded-lg px-3 py-2 text-sm outline-none transition-colors',
                 isDark
-                  ? 'text-gray-300 data-[highlighted]:bg-up/10 data-[highlighted]:text-up data-[state=checked]:font-semibold data-[state=checked]:text-up'
-                  : 'text-gray-700 data-[highlighted]:bg-up-soft data-[highlighted]:text-up data-[state=checked]:font-semibold data-[state=checked]:text-up',
+                  ? 'text-gray-300 data-[highlighted]:bg-white/10 data-[highlighted]:text-white data-[state=checked]:font-semibold data-[state=checked]:text-ink'
+                  : 'text-gray-700 data-[highlighted]:bg-ink-soft data-[highlighted]:text-ink data-[state=checked]:font-semibold data-[state=checked]:text-ink',
               )"
             >
               <SelectItemText>{{ opt.label }}</SelectItemText>

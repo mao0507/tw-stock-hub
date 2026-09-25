@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { watch } from 'vue'
 import { useECharts } from '../composables/useECharts'
-import { STOCK_COLORS } from '../theme/echarts-theme'
+import { STOCK_COLORS, PIE_PALETTE } from '../theme/echarts-theme'
 import type { ECOption } from '../types'
 
 interface Slice {
@@ -18,10 +18,6 @@ const props = withDefaults(defineProps<Props>(), { height: 240 })
 
 const { chartContainer, setOption, isReady } = useECharts()
 
-const PALETTE = [
-  '#6aa9f0', '#7c6df0', '#e8893f', '#e9c84a', '#4f9ef0',
-  '#34c79a', '#ef6a7d', '#a78bfa', '#2dd4bf', '#f9a8c4', '#b0bac9',
-]
 
 function buildOption(): ECOption {
   if (!props.data.length) return {}
@@ -30,7 +26,7 @@ function buildOption(): ECOption {
     backgroundColor: 'transparent',
     tooltip: {
       trigger: 'item',
-      backgroundColor: 'rgba(28,40,51,0.92)',
+      backgroundColor: 'rgba(29,36,32,0.94)',
       borderColor: 'transparent',
       borderRadius: 8,
       padding: [6, 10],
@@ -53,19 +49,13 @@ function buildOption(): ECOption {
     series: [
       {
         type: 'pie',
-        radius: ['58%', '82%'],
+        radius: ['62%', '88%'],
         center: ['50%', '50%'],
         avoidLabelOverlap: true,
         padAngle: 1.5,
-        itemStyle: { borderColor: '#fff', borderWidth: 2, borderRadius: 4 },
-        label: {
-          show: true,
-          formatter: (p: { name: string; percent: number }) =>
-            p.percent >= 4 ? `${p.name}` : '',
-          fontSize: 11,
-          color: STOCK_COLORS.text,
-        },
-        labelLine: { length: 6, length2: 10, smooth: true },
+        itemStyle: { borderColor: '#fffdf8', borderWidth: 2, borderRadius: 4 },
+        // ponytail: 外圈標籤在窄版會被截斷，圖例改由使用端以 HTML 呈現
+        label: { show: false },
         emphasis: {
           scaleSize: 6,
           itemStyle: { shadowBlur: 12, shadowColor: 'rgba(0,0,0,0.15)' },
@@ -73,7 +63,7 @@ function buildOption(): ECOption {
         data: props.data.map((d, i) => ({
           name: d.name,
           value: d.value,
-          itemStyle: { color: PALETTE[i % PALETTE.length] },
+          itemStyle: { color: PIE_PALETTE[i % PIE_PALETTE.length] },
         })),
       },
     ],

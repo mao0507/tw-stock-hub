@@ -221,27 +221,27 @@ const failureChartOption = computed((): ECOption => {
     xAxis: {
       type: 'category',
       data: last7Days.map(d => d.slice(5)),
-      axisLabel: { color: '#6B7280', fontSize: 11 },
-      axisLine: { lineStyle: { color: '#374151' } },
+      axisLabel: { color: STOCK_COLORS.textLight, fontSize: 11 },
+      axisLine: { lineStyle: { color: STOCK_COLORS.grid } },
       axisTick: { show: false },
     },
     yAxis: {
       type: 'value',
       minInterval: 1,
-      axisLabel: { color: '#6B7280', fontSize: 11 },
-      splitLine: { lineStyle: { color: '#1F2937', type: 'dashed' } },
+      axisLabel: { color: STOCK_COLORS.textLight, fontSize: 11 },
+      splitLine: { lineStyle: { color: STOCK_COLORS.grid, type: 'dashed' } },
     },
     series: [{
       type: 'bar',
       data: failureByDay.map(v => ({
         value: v,
-        itemStyle: { color: v > 0 ? STOCK_COLORS.up : '#374151' },
+        itemStyle: { color: v > 0 ? STOCK_COLORS.up : STOCK_COLORS.grid },
       })),
       barMaxWidth: 24,
     }],
     tooltip: {
       trigger: 'axis',
-      backgroundColor: '#111827',
+      backgroundColor: '#1d2420',
       borderColor: 'transparent',
       textStyle: { color: '#fff', fontSize: 12 },
       formatter: (p: unknown) => {
@@ -266,7 +266,7 @@ onUnmounted(() => {
 })
 
 function statusBadge(status: string): string {
-  return ({ success: 'badge-ok', failed: 'badge-error', partial: 'badge-pending', never: 'badge bg-white/5 text-gray-600' } as Record<string, string>)[status] ?? 'badge bg-white/5 text-gray-500'
+  return ({ success: 'badge-ok', failed: 'badge-error', partial: 'badge-pending', never: 'badge bg-gray-100 text-gray-500' } as Record<string, string>)[status] ?? 'badge bg-gray-100 text-gray-500'
 }
 
 function statusLabel(status: string): string {
@@ -304,7 +304,7 @@ function relativeTime(dateStr: string | null): string {
     </div>
 
     <section>
-      <h2 class="mb-3 font-display text-xs font-bold uppercase tracking-wide text-gray-500">
+      <h2 class="mb-3 font-display text-lg font-extrabold text-gray-900">
         爬蟲狀態
       </h2>
       <div class="card overflow-hidden p-0">
@@ -360,7 +360,7 @@ function relativeTime(dateStr: string | null): string {
     </section>
 
     <section v-if="jobs.length">
-      <h2 class="mb-3 font-display text-xs font-bold uppercase tracking-wide text-gray-500">
+      <h2 class="mb-3 font-display text-lg font-extrabold text-gray-900">
         手動觸發紀錄
       </h2>
       <div class="card overflow-hidden p-0">
@@ -395,7 +395,7 @@ function relativeTime(dateStr: string | null): string {
     </section>
 
     <section>
-      <h2 class="mb-3 font-display text-xs font-bold uppercase tracking-wide text-gray-500">
+      <h2 class="mb-3 font-display text-lg font-extrabold text-gray-900">
         近 7 日失敗次數
       </h2>
       <div class="card">
@@ -409,11 +409,11 @@ function relativeTime(dateStr: string | null): string {
 
     <section>
       <div class="mb-3 flex items-center justify-between">
-        <h2 class="font-display text-xs font-bold uppercase tracking-wide text-gray-500">
+        <h2 class="font-display text-lg font-extrabold text-gray-900">
           執行記錄查詢
         </h2>
         <button
-          class="text-xs text-gray-500 hover:text-white"
+          class="text-xs text-gray-500 hover:text-gray-900"
           @click="void fetchLogs()"
         >
           ↻ 刷新
@@ -425,7 +425,6 @@ function relativeTime(dateStr: string | null): string {
           <label class="text-[10px] text-gray-500">爬蟲</label>
           <AppSelect
             :model-value="filterCrawler || ALL_VALUE"
-            variant="dark"
             :options="crawlerOptions"
             class="w-48"
             @update:model-value="(v) => filterCrawler = v === ALL_VALUE ? '' : v"
@@ -436,7 +435,6 @@ function relativeTime(dateStr: string | null): string {
           <label class="text-[10px] text-gray-500">狀態</label>
           <AppSelect
             :model-value="filterStatus || ALL_VALUE"
-            variant="dark"
             :options="statusOptions"
             class="w-28"
             @update:model-value="(v) => filterStatus = v === ALL_VALUE ? '' : v"
@@ -447,7 +445,6 @@ function relativeTime(dateStr: string | null): string {
           <label class="text-[10px] text-gray-500">起始日期</label>
           <AppDatePicker
             v-model="filterFrom"
-            variant="dark"
             class="w-36"
           />
         </div>
@@ -456,7 +453,6 @@ function relativeTime(dateStr: string | null): string {
           <label class="text-[10px] text-gray-500">結束日期</label>
           <AppDatePicker
             v-model="filterTo"
-            variant="dark"
             class="w-36"
           />
         </div>
@@ -520,7 +516,7 @@ function relativeTime(dateStr: string | null): string {
             <tr v-if="!isLogsLoading && !logs.length">
               <td
                 colspan="5"
-                class="border-b-0 py-8 text-center text-gray-600"
+                class="border-b-0 py-8 text-center text-gray-500"
               >
                 無執行紀錄
               </td>
@@ -528,7 +524,7 @@ function relativeTime(dateStr: string | null): string {
             <tr v-if="isLogsLoading">
               <td
                 colspan="5"
-                class="border-b-0 py-8 text-center text-gray-600"
+                class="border-b-0 py-8 text-center text-gray-500"
               >
                 載入中…
               </td>
@@ -536,32 +532,32 @@ function relativeTime(dateStr: string | null): string {
           </tbody>
         </table>
 
-        <div class="flex items-center justify-between border-t border-white/10 px-4 py-2 text-xs text-gray-500">
+        <div class="flex items-center justify-between border-t border-paper-line px-4 py-2 text-xs text-gray-500">
           <span class="font-mono">第 {{ logPage }} / {{ logTotalPages }} 頁</span>
           <div class="flex gap-1">
             <button
-              class="rounded px-2 py-1 hover:bg-white/10 hover:text-white disabled:opacity-30"
+              class="rounded px-2 py-1 hover:bg-gray-100 hover:text-gray-900 disabled:opacity-30"
               :disabled="logPage <= 1"
               @click="goToPage(1)"
             >
               «
             </button>
             <button
-              class="rounded px-2 py-1 hover:bg-white/10 hover:text-white disabled:opacity-30"
+              class="rounded px-2 py-1 hover:bg-gray-100 hover:text-gray-900 disabled:opacity-30"
               :disabled="logPage <= 1"
               @click="goToPage(logPage - 1)"
             >
               ‹ 上一頁
             </button>
             <button
-              class="rounded px-2 py-1 hover:bg-white/10 hover:text-white disabled:opacity-30"
+              class="rounded px-2 py-1 hover:bg-gray-100 hover:text-gray-900 disabled:opacity-30"
               :disabled="logPage >= logTotalPages"
               @click="goToPage(logPage + 1)"
             >
               下一頁 ›
             </button>
             <button
-              class="rounded px-2 py-1 hover:bg-white/10 hover:text-white disabled:opacity-30"
+              class="rounded px-2 py-1 hover:bg-gray-100 hover:text-gray-900 disabled:opacity-30"
               :disabled="logPage >= logTotalPages"
               @click="goToPage(logTotalPages)"
             >
@@ -574,7 +570,6 @@ function relativeTime(dateStr: string | null): string {
 
     <AppAlertDialog
       :open="!!pendingCrawler"
-      variant="dark"
       title="手動執行爬蟲"
       :description="`確定要手動執行 ${pendingCrawler} ？`"
       confirm-text="執行"

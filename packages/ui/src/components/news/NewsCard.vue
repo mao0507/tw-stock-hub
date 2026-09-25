@@ -39,7 +39,7 @@ const sourceLabel = computed(() =>
       <span class="text-xs text-gray-400">{{ sourceLabel }}</span>
       <span class="ml-auto font-mono text-xs text-gray-400">{{ displayTime }}</span>
     </div>
-    <p class="line-clamp-2 text-sm font-medium leading-snug text-gray-800 hover:text-up">
+    <p class="line-clamp-2 text-sm font-medium leading-snug text-gray-800 hover:text-ink">
       {{ news.title }}
     </p>
     <p v-if="news.summary" class="mt-1 line-clamp-1 text-xs text-gray-400">

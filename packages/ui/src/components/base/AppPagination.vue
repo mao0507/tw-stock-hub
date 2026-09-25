@@ -48,7 +48,7 @@ const emit = defineEmits<{ 'page-change': [page: number] }>()
             :class="[
               'flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium',
               item.value === page
-                ? 'bg-up text-white'
+                ? 'bg-ink text-white'
                 : 'border border-gray-200 hover:bg-gray-50 text-gray-700',
             ]"
           >{{ item.value }}</PaginationListItem>

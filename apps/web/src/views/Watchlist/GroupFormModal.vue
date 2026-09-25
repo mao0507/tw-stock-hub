@@ -80,7 +80,7 @@ async function onSubmit(): Promise<void> {
           <button
             type="button"
             class="flex h-7 w-7 items-center justify-center rounded-full border border-gray-200 text-xs text-gray-400"
-            :class="color === null ? 'ring-2 ring-up ring-offset-1' : ''"
+            :class="color === null ? 'ring-2 ring-ink ring-offset-1' : ''"
             aria-label="不設定顏色"
             @click="color = null"
           >

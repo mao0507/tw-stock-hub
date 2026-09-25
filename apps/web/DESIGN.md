@@ -1,124 +1,116 @@
-# 台股盤後資料站 — 前端設計系統（Design System）
+# 存股帳本（tw-stock-hub）— 前端設計系統
 
-> 單一設計來源。所有頁面、元件都應參照本文件的 token 與樣式慣例。
-> 實作位置：全域 token 與共用 class 定義於 `src/assets/main.css`；圖表色彩於 `packages/charts/src/theme/echarts-theme.ts`。
-
----
-
-## 1. 設計方向（Aesthetic Direction）
-
-**金融終端機 · 明亮版（Financial Terminal, Light）**
-
-冷靜、資訊密集、數字優先。白底卡片 + 細邊框，搭配等寬字呈現金融數字，紅綠雙色強烈表達多空。Editorial 風格標題（粗黑體 + 等寬英文副標 + 底線分隔），版面以「看板（board）」為單位。克制的留白，高對比的數據強調。
-
-**記憶點**：淨額「流向長條」(flow-bar) — 數據用視覺長度即時表達強弱，而非只有數字。
+> 單一設計來源，web 與 admin 共用。所有頁面、元件都應參照本文件的 token 與樣式慣例。
+> 實作位置：
+> - Tailwind token（`paper` / `ink` / `up` / `down` / 暖灰 `gray-*` / 字體）：`configs/tailwind-config/tailwind.config.ts`
+> - CSS 變數與共用 class：`apps/web/src/assets/main.css`（admin 為 `apps/admin/src/assets/main.css`，token 相同）
+> - 圖表色：`packages/charts/src/theme/echarts-theme.ts`（`STOCK_COLORS`、`PIE_PALETTE`）
 
 ---
 
-## 2. 色彩 Token（Color）
+## 1. 設計方向：A「存股帳本」
 
-台股慣例：**紅漲、綠跌**（與歐美相反）。
+暖紙底、襯線標題、沉穩墨綠。像一本整理好的投資帳本，而不是閃爍的交易終端。
+資訊仍然完整密集，但用層次（報頭 → 看板 → 列）讓人一眼找到重點。
 
-| Token | 值 | 用途 |
+**記憶點**：墨綠「帳本摘要卡」與襯線大標報頭；數字全部用等寬字。
+
+---
+
+## 2. 色彩 Token
+
+台股慣例：**紅漲、綠跌**，而且一律搭配 ▲▼ 或正負號，不只靠顏色。
+**紅色只代表「漲／買超／正值」，不可當品牌色或主要按鈕色**；主色是墨綠。
+
+| Token（CSS / Tailwind） | 值 | 用途 |
 |-------|-----|------|
-| `--up` | `#e63950` | 上漲 / 買超 / 正值 |
-| `--dn` | `#10b77a` | 下跌 / 賣超 / 負值 |
-| `--gold` | `#d97706` | 標籤、強調點綴（如 TAIEX tag）|
-| `--bg` | `#f4f6f9` | 頁面背景 |
-| `--sf` | `#ffffff` | 卡片 / 看板表面 |
-| `--bd` | `#e2e8f0` | 邊框 / 分隔線 |
-| `--txt` | `#0f172a` | 主要文字 |
-| `--muted` | `#94a3b8` | 次要 / 標籤文字 |
-| `--up-soft` | `rgba(230,57,80,0.1)` | 紅色淡底（標籤、bar 漸層尾）|
-| `--dn-soft` | `rgba(16,183,122,0.1)` | 綠色淡底 |
+| `--ink` / `ink` | `#1f4d3a` | 主色：導覽選中、主要按鈕、焦點框、摘要卡 |
+| `--ink-hover` / `ink-hover` | `#173a2c` | 主色 hover |
+| `ink-soft` | `rgba(31,77,58,0.08)` | 主色淡底（標籤、選取） |
+| `--up` / `up` | `#c2412d` | 上漲 / 買超 / 正值 |
+| `--dn` / `down` | `#1c7c54` | 下跌 / 賣超 / 負值 |
+| `--gold` | `#b7791f` | 點綴（TAIEX tag、配息金額、警示） |
+| `--bg` / `paper` | `#f6f2ea` | 頁面底色 |
+| `--sf` / `paper-surface` | `#fffdf8` | 卡片 / 看板 |
+| `--bd` / `paper-line` | `#e3dccd` | 邊框 / 分隔線 |
+| `--bd-soft` | `#ece6da` | 表格列分隔 |
+| `--txt` / `gray-900` | `#1d2420` | 主要文字 |
+| `--muted` | `#6d7068` | 次要文字 |
 
-- 不使用紫色漸層、不使用品牌藍當主色。藍 (`#2563eb`) 僅用於連結 hover。
-- 圖表（ECharts / lightweight-charts）色彩須與 `--up`/`--dn` 對齊（見 echarts-theme）。
+- Tailwind `gray-*` 已整組換成暖灰（`gray-400` 以上對紙底皆達 4.5:1），不要再引入 `slate`、`blue` 等冷色。
+- 墨綠底上的漲跌色要提亮：漲 `#ffb4a3`、跌 `#9fe0bf`（見 Portfolio 摘要卡）。
+- 錯誤訊息用 `red-50/red-700`，破壞性按鈕用 `destructive` 變體。
 
 ---
 
-## 3. 字體（Typography）
+## 3. 字體
 
 | 角色 | 字體 | 用途 |
 |------|------|------|
-| 顯示 Display | `'Noto Sans TC', sans-serif` 粗體 | 標題、股名 |
-| 數字 Mono | `'JetBrains Mono', monospace` | 所有金融數字、代號、日期、英文副標 |
-| 內文 Body | `'Noto Sans TC', sans-serif` | 一般文字 |
+| Display | `Noto Serif TC` 600/800（`font-display`） | 頁面大標、看板標題、品牌字 |
+| Mono | `IBM Plex Mono`（`font-mono` / `.num`） | 所有金融數字、代號、日期、英文副標 |
+| Body | `Noto Sans TC` | 一般文字 |
 
-- **所有數字一律等寬字**（價格、漲跌、量、淨額、代號、日期）。
-- 最小字級 **14px**（`0.875rem`）為內文基準；輔助標籤可至 `0.7rem`。
-- 字重：標題 700–800、強調數字 500–600、一般 400–500。
-
----
-
-## 4. 間距 / 圓角 / 陰影
-
-- 卡片內距：`1rem`（緊湊看板）～`1.25rem`（一般卡片）。
-- 區塊間距：`1.25rem`（`gap`）。
-- 圓角：看板 `12px`、卡片 `10px`、pill `999px`、小元件 `5–8px`。
-- 陰影：預設無（`box-shadow: none`）；hover 浮起用 `0 4px 12px rgba(15,23,42,0.06)`。
-- 頁面常用滿版出血：`-m-4 p-5 md:-m-6 md:p-7` 讓背景延伸到邊。
+- **所有數字一律等寬字**。
+- 頁面大標 `2rem/800`；看板標題 `1.1rem/800`；內文 14–15px。
 
 ---
 
-## 5. 共用元件 class（定義於 main.css）
+## 4. 版面
+
+- **桌機（≥1024px）**：左側 232px 側欄（品牌 + 文字導覽，選中項墨綠實心）＋頂部搜尋列；內容區 `max-w-[1400px]`、左右 48px。
+- **手機**：頂部品牌 + 搜尋；底部導覽（市場／持股／自選／行事曆／更多），觸控目標 ≥44px，「更多」收法人動向、融資融券、登出。
+- **報頭 `.page-head`**：襯線大標 + 等寬英文副標 + 右側 meta，底部 2px 深色粗線。
+- **看板 `.panel` + `.panel-hd`**：紙白底、1px 邊框、16px 圓角、無陰影。
+- 寬表格在手機改兩行卡片（排行列表）或 `.scroll-x` 水平捲動；**手機不可省略欄位**，改用換行呈現。
+- 月曆在手機預設清單模式。
+
+---
+
+## 5. 共用 class（main.css）
 
 | class | 說明 |
 |-------|------|
-| `.panel` | 看板容器：白底、`--bd` 邊框、`12px` 圓角、無陰影 |
-| `.panel-hd` | 看板標題列：左標題右標籤、底部分隔線 |
-| `.seg` / `.seg-on` | 底線式分段控制（tab 風） |
-| `.pill` / `.pill-on` | 膠囊式選擇（市場、天數）|
-| `.bs-toggle` `.bs` `.bs-buy` `.bs-sell` | 買/賣超紅綠切換 |
-| `.stat-cell` `.stat-k` `.stat-v` | 指標格（label + 等寬值）|
-| `.flow-bar` `.flow-up` `.flow-dn` | 淨額流向長條（漸層、寬度 ∝ 量）|
-| `.num` | 等寬數字（`font-mono`）|
-| `.is-up` `.is-dn` `.is-flat` | 數值方向上色 |
+| `.page-head` `.page-head-title` `.page-head-sub` `.page-head-meta` | 報頭 |
+| `.panel` `.panel-hd` `.panel-title` `.panel-tag` | 看板 |
+| `.card` `.stat-card` | 一般卡片 |
+| `.btn-primary`（墨綠）`.btn-ghost` | 按鈕，最小高 40px |
+| `.input-field` | 輸入框，墨綠焦點環 |
+| `.seg` / `.seg-on` | 底線式分段（墨綠底線） |
+| `.pill` / `.pill-on` | 膠囊選擇（選中墨綠） |
+| `.bs-toggle` `.bs` `.bs-buy` `.bs-sell` | 買／賣、增／減切換（紅綠有語意） |
+| `.stat-cell` `.stat-k` `.stat-v` | 指標格 |
+| `.kpi*` `.fund-*` `.bar-chart` `.bc-*` | 個股基本面 |
+| `.flow-bar` `.flow-up` `.flow-dn` | 淨額流向長條 |
+| `.table-modern` | 表格（表頭不換行） |
+| `.num` `.is-up` `.is-dn` `.is-flat` | 等寬數字與方向色 |
+| `.scroll-x` | 手機水平捲動容器 |
 
-> 既有的 `.card`、`.badge`、`.btn-primary`、`.input-field`、`.table-modern` 保留，色彩改吃 token。
-
----
-
-## 6. 動態（Motion）
-
-- 進場：`useStaggerIn` 對 `.fade-card` / `.card` 做交錯淡入。
-- hover：背景色 `0.12–0.15s` 過渡；卡片浮起 `translateY(-1px)` + 陰影。
-- 數據條：`width` `0.4s ease` 過渡。
-- 數字跳動：`useCountUp`（大盤指數、成交值）。
-- 克制原則：一次漂亮的載入交錯 > 散落的微互動。
+共用 UI 元件（`packages/ui`）：`AppButton` 預設墨綠、`AppInput`／`AppSelect`／`AppDatePicker` 焦點與選取為墨綠、`AppPagination` 選中墨綠。
 
 ---
 
-## 7. 版面慣例（Layout Patterns）
+## 6. 圖表
 
-- **頁首 Header**：粗體中文標題 + 等寬英文副標（letter-spacing 寬）+ 底線；右側放 meta/說明。
-- **看板 Board**：`.panel` + `.panel-hd`，內容為列表 / 表格 / grid。
-- **排行列表**：排名 chip（前 3 名 `--up`）+ 股名/代號 + flow-bar + 等寬淨額，整列可點跳個股。
-- **卡片網格**：`repeat(auto-fill, minmax(180px, 1fr))`。
-- **控制列**：seg（類別）置左、pill（範圍）+ bs-toggle（多空）置右。
+- 漲跌用 `STOCK_COLORS.up/down`；中性線（指數、累計）用 `STOCK_COLORS.blue`（實為墨綠）。
+- 格線 `#ebe4d6`、文字 `#3a3833`、tooltip 深墨 `#1d2420`。
+- 配置比例（圓餅）用 `PIE_PALETTE`，不帶漲跌語意；圖例以 HTML 列表呈現，避免窄版標籤被截斷。
 
 ---
 
-## 8. 各頁規劃（Per-page Plan）
+## 7. 動態
 
-| 頁面 | 重點 |
-|------|------|
-| Home 大盤總覽 | hero 指數 + 指標面板、走勢圖、熱力圖（可下鑽成份股）、新聞、外資/投信/融資看板 |
-| Stock 個股 | 報價 header（8 格指標 + 同類股）、K 線(含量+MA+hover legend)、法人/融資/分點/新聞分頁 |
-| Institutional 法人 | 流向看板（flow-bar 排行）+ 連續買賣 streak 卡片 |
-| Margin 融資融券 | 同 Institutional 模式：餘額/增減看板 + 高券資比 |
-| Broker 分點總覽 | 主力買賣榜 + 各股 top3，點分點進檔案頁 |
-| Screener 選股 | 條件控制列（seg/pill）+ 結果看板 |
-| Watchlist 自選股 | 卡片網格 + 報價 |
-
-統一原則：**白底看板、等寬數字、紅漲綠跌、editorial header、flow-bar 表達強弱**。
+- 進場：`useStaggerIn` 交錯淡入；大數字 `useCountUp`。
+- hover：背景 0.15s 過渡；數據條 `width 0.4s ease`。
+- 克制：一次載入交錯 > 散落的微互動。
 
 ---
 
-## 9. 禁忌（Don'ts）
+## 8. 禁忌
 
-- ❌ 紫色漸層、Inter/Roboto/系統字當主字。
-- ❌ 漲用綠、跌用紅（台股相反）。
+- ❌ 紅色當品牌色／主要按鈕（會被讀成「漲」）。
+- ❌ 漲用綠、跌用紅；只靠顏色不加 ▲▼／正負號。
 - ❌ 數字用非等寬字。
-- ❌ 每頁各自重定義色票 — 一律吃全域 token。
-- ❌ 重陰影、過度圓角、花俏動畫。
+- ❌ 每頁各自寫色票 — 一律吃 token；不再使用冷灰 `#f1f5f9`、`#94a3b8` 等舊色。
+- ❌ 手機為了塞版面而隱藏資料欄位。
+- ❌ 空的 Phase 3 區塊（新聞）佔版面：資料上線前不顯示。

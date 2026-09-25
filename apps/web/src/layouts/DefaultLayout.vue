@@ -1,156 +1,245 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useAuthStore } from '@/stores/auth.store'
-import { stockApi } from '@tw-stock-hub/api-client'
-import type { StockSearchItem } from '@tw-stock-hub/types'
 import { UserAvatar } from '@tw-stock-hub/ui'
+import StockSearch from './StockSearch.vue'
 
+const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const { isLoggedIn, user } = storeToRefs(authStore)
 
-const searchQuery = ref('')
-const searchResults = ref<StockSearchItem[]>([])
-const showDropdown = ref(false)
-let debounceTimer: ReturnType<typeof setTimeout> | null = null
-
-function onSearch(q: string): void {
-  searchQuery.value = q
-  if (debounceTimer) clearTimeout(debounceTimer)
-  if (!q.trim()) { searchResults.value = []; showDropdown.value = false; return }
-  debounceTimer = setTimeout(async () => {
-    searchResults.value = await stockApi.searchStocks(q)
-    showDropdown.value = searchResults.value.length > 0
-  }, 300)
-}
-
-function onSearchBlur(): void {
-  setTimeout(() => { showDropdown.value = false }, 150)
-}
+const moreOpen = ref(false)
+const moreMenu = ref<HTMLElement>()
+watch(() => route.fullPath, () => { moreOpen.value = false })
+// 開啟時焦點移入選單；Esc 關閉
+watch(moreOpen, async (open) => {
+  if (!open) return
+  await nextTick()
+  moreMenu.value?.querySelector<HTMLElement>('a, button')?.focus()
+})
+const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') moreOpen.value = false }
+onMounted(() => window.addEventListener('keydown', onKey))
+onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 
 async function onLogout(): Promise<void> {
+  moreOpen.value = false
   await authStore.logout()
   await router.push({ name: 'login' })
 }
 
-function goToStock(id: string): void {
-  showDropdown.value = false
-  searchQuery.value = ''
-  void router.push({ name: 'stock-detail', params: { id } })
+const ICONS = {
+  market: 'M4 19h16M6 15l4-5 3 3 5-7',
+  portfolio: 'M3 7h18v13H3zM3 11h18M8 7V5h8v2',
+  watchlist: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z',
+  calendar: 'M4 5h16v15H4zM4 10h16M8 3v4M16 3v4',
+  institutional: 'M3 21h18M5 21V9l7-5 7 5v12M9 21v-6h6v6',
+  margin: 'M12 3v18M17 6H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6',
+  more: 'M5 12h.01M12 12h.01M19 12h.01',
 }
 
 const navItems = [
-  { name: 'home', label: '大盤', icon: 'M3 13h4v8H3zM10 8h4v13h-4zM17 4h4v17h-4z' },
-  { name: 'institutional', label: '法人', icon: 'M3 21h18M5 21V9l7-5 7 5v12M9 21v-6h6v6' },
-  { name: 'margin', label: '融資券', icon: 'M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6' },
-  { name: 'calendar', label: '行事曆', icon: 'M3 9h18M7 3v3M17 3v3M5 5h14a1 1 0 011 1v13a1 1 0 01-1 1H5a1 1 0 01-1-1V6a1 1 0 011-1z' },
-  { name: 'portfolio', label: '持股', icon: 'M21 12V7H5a2 2 0 010-4h14v4M3 5v14a2 2 0 002 2h16v-5M18 12a2 2 0 000 4h4v-4z' },
-  { name: 'watchlist', label: '自選股', icon: 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z' },
+  { name: 'home', label: '今日市場', short: '市場', icon: ICONS.market },
+  { name: 'portfolio', label: '我的持股', short: '持股', icon: ICONS.portfolio },
+  { name: 'watchlist', label: '自選股', short: '自選', icon: ICONS.watchlist },
+  { name: 'calendar', label: '除權息行事曆', short: '行事曆', icon: ICONS.calendar },
+  { name: 'institutional', label: '法人動向', short: '法人', icon: ICONS.institutional },
+  { name: 'margin', label: '融資融券', short: '融資券', icon: ICONS.margin },
 ]
+// 手機底部列放前四項，其餘收進「更多」
+const bottomItems = navItems.slice(0, 4)
+const moreItems = navItems.slice(4)
+
+const isActive = (name: string) => route.name === name
+const moreActive = computed(() => moreItems.some((i) => i.name === route.name))
 </script>
 
 <template>
-  <div class="flex min-h-screen bg-gray-50">
-    <aside class="fixed inset-y-0 left-0 z-30 flex w-16 flex-col items-center border-r border-gray-100 bg-white py-4 gap-2 md:w-20">
+  <div class="min-h-screen bg-paper text-gray-900 lg:flex">
+    <!-- 桌機側欄 -->
+    <nav
+      aria-label="主選單"
+      class="sticky top-0 hidden h-screen w-[232px] flex-shrink-0 flex-col gap-8 border-r border-paper-line px-6 py-8 lg:flex"
+    >
       <router-link
         to="/"
-        class="mb-4 flex h-9 w-9 items-center justify-center rounded-lg bg-up font-display text-sm font-bold text-white"
+        class="flex flex-col gap-0.5 no-underline"
       >
-        台股
+        <span class="font-display text-[26px] font-extrabold tracking-wide text-ink">存股帳本</span>
+        <span class="font-mono text-[11px] tracking-[0.18em] text-gray-500">TW STOCK HUB</span>
       </router-link>
 
-      <nav class="flex w-full flex-col gap-1 px-2">
-        <router-link
+      <ul class="flex flex-col gap-1 text-[15px]">
+        <li
           v-for="item in navItems"
           :key="item.name"
-          :to="{ name: item.name }"
-          class="flex flex-col items-center gap-1 rounded-lg px-1 py-2.5 text-center text-[11px] transition-all duration-200 ease-out"
-          :class="$route.name === item.name
-            ? 'bg-up-soft font-semibold text-up'
-            : 'text-gray-500 hover:bg-gray-100'"
         >
-          <svg
-            class="h-5 w-5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          ><path :d="item.icon" /></svg>
-          <span class="hidden md:block">{{ item.label }}</span>
-        </router-link>
-      </nav>
+          <router-link
+            :to="{ name: item.name }"
+            :aria-current="isActive(item.name) ? 'page' : undefined"
+            class="flex min-h-[42px] items-center gap-3 rounded-lg px-3 transition-colors"
+            :class="isActive(item.name) ? 'bg-ink font-medium text-paper' : 'text-gray-800 hover:bg-gray-100'"
+          >
+            <svg
+              class="h-[18px] w-[18px] flex-shrink-0"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            ><path :d="item.icon" /></svg>
+            {{ item.label }}
+          </router-link>
+        </li>
+      </ul>
 
-      <div class="mt-auto flex flex-col items-center gap-2">
-        <template v-if="isLoggedIn && user">
+      <div class="mt-auto border-t border-paper-line pt-5">
+        <div
+          v-if="isLoggedIn && user"
+          class="flex items-center gap-3"
+        >
           <UserAvatar
             :avatar-url="user.avatarUrl"
             :nickname="user.nickname"
             size="sm"
           />
-          <span class="hidden max-w-[4.5rem] truncate text-[11px] text-gray-500 md:block">{{ user.nickname }}</span>
-          <button
-            type="button"
-            class="text-xs text-gray-400 hover:text-up"
-            @click="onLogout"
-          >
-            登出
-          </button>
-        </template>
+          <div class="flex min-w-0 flex-col">
+            <span class="truncate text-sm font-medium text-gray-900">{{ user.nickname }}</span>
+            <button
+              type="button"
+              class="self-start text-xs text-gray-500 hover:text-ink"
+              @click="onLogout"
+            >
+              登出
+            </button>
+          </div>
+        </div>
         <router-link
           v-else
           to="/login"
-          class="text-xs text-gray-400 hover:text-up"
+          class="btn-primary w-full"
         >
           登入
         </router-link>
       </div>
-    </aside>
+    </nav>
 
-    <div class="flex flex-1 flex-col pl-16 md:pl-20">
-      <header class="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-gray-100 bg-white/90 px-4 backdrop-blur">
-        <div class="relative flex-1 max-w-sm">
-          <svg
-            class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          ><circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" /></svg>
-          <input
-            :value="searchQuery"
-            placeholder="搜尋股票代號或名稱…"
-            class="input-field w-full pl-9"
-            @input="onSearch(($event.target as HTMLInputElement).value)"
-            @blur="onSearchBlur"
-            @focus="showDropdown = searchResults.length > 0"
-          >
-          <div
-            v-if="showDropdown"
-            class="absolute top-full left-0 right-0 mt-1 rounded-xl border border-gray-100 bg-white shadow-soft z-50"
-          >
-            <button
-              v-for="s in searchResults"
-              :key="s.id"
-              class="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-gray-50"
-              @click="goToStock(s.id)"
-            >
-              <span class="font-mono text-sm font-semibold text-gray-700">{{ s.id }}</span>
-              <span class="text-sm text-gray-600">{{ s.name }}</span>
-              <span class="ml-auto text-xs text-gray-400">{{ s.market }}</span>
-            </button>
-          </div>
+    <div class="flex min-w-0 flex-1 flex-col pb-[72px] lg:pb-0">
+      <!-- 頂部：手機顯示品牌；桌機只放搜尋 -->
+      <header class="sticky top-0 z-30 flex items-center gap-3 border-b border-paper-line bg-paper/95 px-4 py-3 backdrop-blur lg:px-12">
+        <router-link
+          to="/"
+          class="whitespace-nowrap font-display text-xl font-extrabold text-ink lg:hidden"
+        >
+          存股帳本
+        </router-link>
+        <div class="ml-auto w-full max-w-[360px]">
+          <StockSearch />
         </div>
       </header>
 
-      <main class="flex-1 animate-fade-up p-4 md:p-6">
+      <main class="mx-auto w-full max-w-[1400px] flex-1 animate-fade-up px-4 py-6 lg:px-12 lg:py-9">
         <RouterView />
       </main>
+    </div>
+
+    <!-- 手機底部導覽 -->
+    <nav
+      aria-label="主選單"
+      class="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-paper-line bg-paper-surface lg:hidden"
+    >
+      <router-link
+        v-for="item in bottomItems"
+        :key="item.name"
+        :to="{ name: item.name }"
+        :aria-current="isActive(item.name) ? 'page' : undefined"
+        class="flex min-h-[60px] flex-col items-center justify-center gap-1 text-[11px]"
+        :class="isActive(item.name) ? 'font-bold text-ink' : 'text-gray-500'"
+      >
+        <svg
+          class="h-5 w-5"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        ><path :d="item.icon" /></svg>
+        {{ item.short }}
+      </router-link>
+      <button
+        type="button"
+        :aria-expanded="moreOpen"
+        aria-controls="more-menu"
+        class="flex min-h-[60px] flex-col items-center justify-center gap-1 text-[11px]"
+        :class="moreActive || moreOpen ? 'font-bold text-ink' : 'text-gray-500'"
+        @click="moreOpen = !moreOpen"
+      >
+        <svg
+          class="h-5 w-5"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="3"
+          stroke-linecap="round"
+          aria-hidden="true"
+        ><path :d="ICONS.more" /></svg>
+        更多
+      </button>
+    </nav>
+
+    <!-- 手機「更多」選單 -->
+    <div
+      v-if="moreOpen"
+      class="fixed inset-0 z-30 bg-gray-900/30 lg:hidden"
+      @click="moreOpen = false"
+    />
+    <div
+      v-if="moreOpen"
+      id="more-menu"
+      ref="moreMenu"
+      class="fixed inset-x-3 bottom-[72px] z-40 rounded-2xl border border-paper-line bg-paper-surface p-2 shadow-lg lg:hidden"
+    >
+      <router-link
+        v-for="item in moreItems"
+        :key="item.name"
+        :to="{ name: item.name }"
+        :aria-current="isActive(item.name) ? 'page' : undefined"
+        class="flex min-h-[48px] items-center gap-3 rounded-xl px-3 text-[15px] text-gray-900 hover:bg-gray-100"
+      >
+        <svg
+          class="h-5 w-5 text-gray-500"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        ><path :d="item.icon" /></svg>
+        {{ item.label }}
+      </router-link>
+      <div class="my-1 border-t border-paper-line" />
+      <button
+        v-if="isLoggedIn"
+        type="button"
+        class="flex min-h-[48px] w-full items-center gap-3 rounded-xl px-3 text-left text-[15px] text-gray-700 hover:bg-gray-100"
+        @click="onLogout"
+      >
+        登出{{ user ? `（${user.nickname}）` : '' }}
+      </button>
+      <router-link
+        v-else
+        to="/login"
+        class="flex min-h-[48px] items-center rounded-xl px-3 text-[15px] font-bold text-ink hover:bg-gray-100"
+      >
+        登入
+      </router-link>
     </div>
   </div>
 </template>

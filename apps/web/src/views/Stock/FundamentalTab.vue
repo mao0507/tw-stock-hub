@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // 基本面分頁：財報狗式六分類（關鍵指標/獲利能力/成長力/價值評估/安全性/董監與籌碼）
 import { ref, computed, watch, onMounted } from 'vue'
-import { PieChart } from '@tw-stock-hub/charts'
+import { PieChart, PIE_PALETTE } from '@tw-stock-hub/charts'
 import { LoadingSkeleton } from '@tw-stock-hub/ui'
 import { stockApi } from '@tw-stock-hub/api-client'
 import type {
@@ -112,9 +112,9 @@ const marginTrend = computed<TrendSeries[]>(() => {
   const pick = (get: (f: FinancialItem) => number | null): { date: string; value: number | null }[] =>
     rows.map(f => ({ date: f.period, value: get(f) }))
   return [
-    { name: '毛利率', color: '#2563eb', data: pick(f => f.grossMargin) },
-    { name: '營益率', color: '#d97706', data: pick(f => f.opMargin) },
-    { name: '淨利率', color: '#e63950', data: pick(f => f.netMargin) },
+    { name: '毛利率', color: '#2f5d8a', data: pick(f => f.grossMargin) },
+    { name: '營益率', color: '#b7791f', data: pick(f => f.opMargin) },
+    { name: '淨利率', color: '#1f4d3a', data: pick(f => f.netMargin) },
   ]
 })
 
@@ -171,22 +171,22 @@ function mkSeries(
 }
 
 const opexNonOpTrend = computed(() => mkSeries([
-  { name: '營業費用率', color: '#7c6df0', get: q => q.opExpenseRatio },
-  { name: '業外佔稅前淨利', color: '#d97706', get: q => q.nonOpToPretaxPct },
+  { name: '營業費用率', color: '#6b4f8a', get: q => q.opExpenseRatio },
+  { name: '業外佔稅前淨利', color: '#b7791f', get: q => q.nonOpToPretaxPct },
 ]))
 
 const roeRoaTrend = computed(() => mkSeries([
-  { name: 'ROE（年化）', color: '#e63950', get: q => q.roe },
-  { name: 'ROA（年化）', color: '#2563eb', get: q => q.roa },
+  { name: 'ROE（年化）', color: '#1f4d3a', get: q => q.roe },
+  { name: 'ROA（年化）', color: '#2f5d8a', get: q => q.roa },
 ]))
 
 const turnoverTrend = computed(() => mkSeries([
-  { name: '存貨週轉天數', color: '#7c6df0', get: q => q.inventoryDays },
-  { name: '應收帳款收現天數', color: '#10b77a', get: q => q.receivableDays },
+  { name: '存貨週轉天數', color: '#6b4f8a', get: q => q.inventoryDays },
+  { name: '應收帳款收現天數', color: '#1c7c54', get: q => q.receivableDays },
 ]))
 
 const contractTrend = computed(() => mkSeries([
-  { name: '合約負債佔營收', color: '#2563eb', get: q => q.contractLiabToRevenuePct },
+  { name: '合約負債佔營收', color: '#2f5d8a', get: q => q.contractLiabToRevenuePct },
 ]))
 
 // 杜邦分析：近 8 季（新→舊）
@@ -203,7 +203,7 @@ const peTrend = computed<TrendSeries[]>(() => {
   if (!hist.length) return []
   return [{
     name: '本益比',
-    color: '#7c6df0',
+    color: '#6b4f8a',
     data: hist.map(h => ({ date: h.date.slice(0, 10), value: h.pe })),
   }]
 })
@@ -253,7 +253,7 @@ const holderTrend = computed<TrendSeries[]>(() => {
   if (!holders.value.length) return []
   return [{
     name: '大戶持股',
-    color: '#e63950',
+    color: '#1f4d3a',
     data: holders.value.map(h => ({ date: h.date.slice(0, 10), value: h.bigHolderPct })),
   }]
 })
@@ -295,7 +295,6 @@ const industryPie = computed(() => {
   const rest = list.slice(8).reduce((s, i) => s + i.weight, 0)
   return [...top.map(i => ({ name: i.sector, value: i.weight })), { name: '其餘', value: Math.round(rest * 100) / 100 }]
 })
-const PIE_PALETTE = ['#6aa9f0', '#7c6df0', '#e8893f', '#e9c84a', '#3b82f6', '#10b77a', '#e63950', '#8b5cf6', '#14b8a6', '#f472b6', '#94a3b8']
 function pieColor(i: number): string {
   return PIE_PALETTE[i % PIE_PALETTE.length]!
 }
@@ -1042,7 +1041,7 @@ function pieColor(i: number): string {
 
 <style scoped>
 /* 指標說明摺疊 */
-.doc-item { border-bottom: 1px solid #f1f5f9; }
+.doc-item { border-bottom: 1px solid var(--bd-soft); }
 .doc-item:last-child { border-bottom: none; }
 .doc-summary {
   display: flex;
@@ -1063,7 +1062,7 @@ function pieColor(i: number): string {
 .doc-latest { font-size: 0.82rem; }
 .doc-body { padding: 0 0.2rem 0.7rem 1.1rem; }
 .doc-formula { font-size: 0.74rem; color: var(--txt); background: var(--bg); border-radius: 6px; padding: 0.4rem 0.6rem; margin-bottom: 0.45rem; }
-.doc-desc { font-size: 0.76rem; color: #475569; line-height: 1.7; }
+.doc-desc { font-size: 0.76rem; color: #3a3833; line-height: 1.7; }
 
 .fund-more {
   font-size: 0.72rem;
@@ -1074,7 +1073,7 @@ function pieColor(i: number): string {
 
 /* 獲利結構長條 */
 .margin-bars { display: flex; flex-direction: column; gap: 0.65rem; }
-.mbar-top { display: flex; justify-content: space-between; font-size: 0.78rem; margin-bottom: 0.25rem; color: #475569; }
+.mbar-top { display: flex; justify-content: space-between; font-size: 0.78rem; margin-bottom: 0.25rem; color: #3a3833; }
 .mbar-track { height: 0.55rem; background: var(--bg); border-radius: 999px; overflow: hidden; }
 .mbar-fill { height: 100%; background: linear-gradient(90deg, var(--up-soft), var(--up)); border-radius: 999px; transition: width 0.4s ease; }
 
@@ -1082,8 +1081,8 @@ function pieColor(i: number): string {
 .score-row { display: flex; align-items: center; gap: 1.2rem; flex-wrap: wrap; }
 .score-badge { display: flex; align-items: center; justify-content: center; width: 2.6rem; height: 2.6rem; border-radius: 10px; font-size: 1.3rem; font-weight: 800; flex-shrink: 0; }
 .grade-A { color: var(--up); background: var(--up-soft); }
-.grade-B { color: #2563eb; background: #dbeafe; }
-.grade-C { color: #a16207; background: #fef3c7; }
+.grade-B { color: #2f5d8a; background: rgba(47, 93, 138, 0.1); }
+.grade-C { color: #9a6416; background: rgba(183, 121, 31, 0.12); }
 .grade-D, .grade-F { color: var(--dn); background: var(--dn-soft); }
 .score-composite { font-family: var(--font-mono); font-size: 1.6rem; font-weight: 700; color: var(--txt); flex-shrink: 0; }
 .score-x { font-size: 0.75rem; color: var(--muted); font-weight: 400; }
@@ -1107,16 +1106,16 @@ function pieColor(i: number): string {
 
 .info-grid { display: grid; grid-template-columns: 1fr; gap: 0; }
 @media (min-width: 768px) { .info-grid { grid-template-columns: 1fr 1fr; column-gap: 1.5rem; } }
-.info-cell { display: grid; grid-template-columns: 6.5rem 1fr; gap: 0.5rem; align-items: start; padding: 0.55rem 0; border-bottom: 1px solid #f1f5f9; }
+.info-cell { display: grid; grid-template-columns: 6.5rem 1fr; gap: 0.5rem; align-items: start; padding: 0.55rem 0; border-bottom: 1px solid var(--bd-soft); }
 .info-k { font-size: 0.78rem; color: var(--muted); }
 .info-v { font-size: 0.82rem; color: var(--txt); word-break: break-all; }
-.info-link { color: #2563eb; text-decoration: none; }
+.info-link { color: var(--ink); text-decoration: none; }
 .info-link:hover { text-decoration: underline; }
 
 .ind-row { display: grid; grid-template-columns: 1fr; gap: 1rem; }
 @media (min-width: 768px) { .ind-row { grid-template-columns: 1fr 1fr; align-items: center; } }
 .ind-list { display: flex; flex-direction: column; gap: 0.1rem; max-height: 240px; overflow-y: auto; }
-.ind-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0.2rem; border-bottom: 1px solid #f1f5f9; font-size: 0.82rem; }
+.ind-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0.2rem; border-bottom: 1px solid var(--bd-soft); font-size: 0.82rem; }
 .ind-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
 .ind-name { color: var(--txt); }
 .ind-w { margin-left: auto; font-weight: 600; color: var(--txt); }

@@ -311,7 +311,7 @@ const tabs: { key: TabKey; label: string }[] = [
         <div class="flex flex-wrap items-end gap-x-6 gap-y-2">
           <div>
             <div class="flex items-center gap-2">
-              <h1 class="font-display text-xl font-bold tracking-tight text-gray-900">
+              <h1 class="font-display text-2xl font-extrabold text-gray-900">
                 {{ currentStock.name }}
               </h1>
               <span class="font-mono text-sm text-gray-400">{{ currentStock.id }}</span>
@@ -320,7 +320,7 @@ const tabs: { key: TabKey; label: string }[] = [
               </span>
               <span
                 v-if="currentStock.sector"
-                class="rounded-full bg-up-soft px-2 py-0.5 text-xs text-up"
+                class="rounded-full bg-ink-soft px-2 py-0.5 text-xs text-ink"
               >{{ currentStock.sector.replace('類指數', '') }}</span>
             </div>
             <div
@@ -438,7 +438,7 @@ const tabs: { key: TabKey; label: string }[] = [
           :class="[
             'shrink-0 whitespace-nowrap px-4 py-3 text-sm font-medium transition-colors',
             activeTab === tab.key
-              ? 'border-b-2 border-up text-up'
+              ? 'border-b-2 border-ink text-ink'
               : 'text-gray-500 hover:text-gray-700',
           ]"
           @click="activeTab = tab.key"
@@ -724,7 +724,7 @@ const tabs: { key: TabKey; label: string }[] = [
                       <td class="w-6 py-1.5 text-center text-xs text-gray-400">{{ i + 1 }}</td>
                       <td class="py-1.5 text-gray-700">
                         {{ fmtBroker(b.brokerName) }}
-                        <span v-if="b.tag" class="ml-1 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-600">{{ b.tag }}</span>
+                        <span v-if="b.tag" class="ml-1 rounded bg-[#b7791f]/10 px-1.5 py-0.5 text-[10px] font-medium text-[#9a6416]">{{ b.tag }}</span>
                       </td>
                       <td class="py-1.5 text-right font-mono text-up">{{ fmtShares(b.net) }}</td>
                     </tr>
@@ -745,7 +745,7 @@ const tabs: { key: TabKey; label: string }[] = [
                       <td class="w-6 py-1.5 text-center text-xs text-gray-400">{{ i + 1 }}</td>
                       <td class="py-1.5 text-gray-700">
                         {{ fmtBroker(b.brokerName) }}
-                        <span v-if="b.tag" class="ml-1 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-600">{{ b.tag }}</span>
+                        <span v-if="b.tag" class="ml-1 rounded bg-[#b7791f]/10 px-1.5 py-0.5 text-[10px] font-medium text-[#9a6416]">{{ b.tag }}</span>
                       </td>
                       <td class="py-1.5 text-right font-mono text-down">{{ fmtShares(b.net) }}</td>
                     </tr>
@@ -869,12 +869,12 @@ const tabs: { key: TabKey; label: string }[] = [
 .bt-form > * { min-width: 8rem; }
 .stat-k {
   font-size: 0.7rem;
-  color: #94a3b8;
+  color: var(--muted);
 }
 .stat-v {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.9rem;
   font-weight: 500;
-  color: #334155;
+  color: #3a3833;
 }
 </style>

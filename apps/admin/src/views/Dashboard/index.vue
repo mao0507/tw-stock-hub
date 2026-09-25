@@ -48,7 +48,7 @@ const statusLabel: Record<string, string> = {
     class="space-y-6"
   >
     <section>
-      <h2 class="mb-3 font-display text-xs font-bold uppercase tracking-wide text-gray-500">
+      <h2 class="mb-3 font-display text-lg font-extrabold text-gray-900">
         服務狀態
       </h2>
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -58,7 +58,7 @@ const statusLabel: Record<string, string> = {
           class="card"
         >
           <div class="mb-2 flex items-center justify-between">
-            <span class="text-sm text-gray-300">{{ svc.name }}</span>
+            <span class="text-sm text-gray-700">{{ svc.name }}</span>
             <span :class="['h-2.5 w-2.5 rounded-full', svc.status === 'ok' ? 'bg-down' : 'bg-up']" />
           </div>
           <div :class="['text-lg font-semibold', svc.status === 'ok' ? 'text-down' : 'text-up']">
@@ -74,10 +74,10 @@ const statusLabel: Record<string, string> = {
 
         <div class="card">
           <div class="mb-2 flex items-center justify-between">
-            <span class="text-sm text-gray-300">Crawler</span>
-            <span :class="['h-2.5 w-2.5 rounded-full', todaySummary.failed > 0 ? 'bg-amber-400' : 'bg-down']" />
+            <span class="text-sm text-gray-700">Crawler</span>
+            <span :class="['h-2.5 w-2.5 rounded-full', todaySummary.failed > 0 ? 'bg-[#b7791f]' : 'bg-down']" />
           </div>
-          <div :class="['text-lg font-semibold', todaySummary.failed > 0 ? 'text-amber-400' : 'text-down']">
+          <div :class="['text-lg font-semibold', todaySummary.failed > 0 ? 'text-[#9a6416]' : 'text-down']">
             {{ todaySummary.failed > 0 ? `${todaySummary.failed} 筆失敗` : '全部正常' }}
           </div>
         </div>
@@ -85,7 +85,7 @@ const statusLabel: Record<string, string> = {
     </section>
 
     <section>
-      <h2 class="mb-3 font-display text-xs font-bold uppercase tracking-wide text-gray-500">
+      <h2 class="mb-3 font-display text-lg font-extrabold text-gray-900">
         今日爬蟲摘要
       </h2>
       <div class="grid grid-cols-3 gap-3">
@@ -99,13 +99,13 @@ const statusLabel: Record<string, string> = {
         </div>
         <div class="stat-card items-center text-center">
           <span class="stat-label">寫入筆數</span>
-          <span class="stat-value text-brand-blue">{{ recordsDisplay.toLocaleString() }}</span>
+          <span class="stat-value text-ink">{{ recordsDisplay.toLocaleString() }}</span>
         </div>
       </div>
     </section>
 
     <section>
-      <h2 class="mb-3 font-display text-xs font-bold uppercase tracking-wide text-gray-500">
+      <h2 class="mb-3 font-display text-lg font-extrabold text-gray-900">
         今日執行紀錄
       </h2>
       <div
@@ -152,7 +152,7 @@ const statusLabel: Record<string, string> = {
             <tr v-if="todayLogs.length === 0">
               <td
                 colspan="5"
-                class="border-b-0 py-8 text-center text-sm text-gray-600"
+                class="border-b-0 py-8 text-center text-sm text-gray-500"
               >
                 今日尚無爬蟲執行紀錄
               </td>

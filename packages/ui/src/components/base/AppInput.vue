@@ -29,7 +29,7 @@ const inputClass = computed(() =>
     'w-full h-10 rounded-lg border px-3 text-sm text-gray-900',
     'bg-white placeholder:text-gray-400',
     'transition-colors duration-150 outline-none',
-    'focus:border-up focus:ring-2 focus:ring-up/20',
+    'focus:border-ink focus:ring-2 focus:ring-ink/20',
     'disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400',
     props.error ? 'border-red-400 focus:border-red-400 focus:ring-red-100' : 'border-gray-200',
     props.class,

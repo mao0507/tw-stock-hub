@@ -43,8 +43,8 @@ function onUpdate(value: DateValue | undefined): void {
       :class="cn(
         'flex h-9 w-full items-center gap-2 rounded-lg border px-3 text-sm transition-colors outline-none',
         isDark
-          ? 'border-white/10 bg-white/5 text-white focus:border-up/60 data-[state=open]:border-up/60'
-          : 'border-gray-200 bg-white text-gray-900 focus:border-up focus:ring-2 focus:ring-up/20 data-[state=open]:border-up',
+          ? 'border-white/10 bg-white/5 text-white focus:border-ink/60 data-[state=open]:border-ink/60'
+          : 'border-gray-200 bg-white text-gray-900 focus:border-ink focus:ring-2 focus:ring-ink/20 data-[state=open]:border-ink',
         'disabled:cursor-not-allowed disabled:opacity-50',
         props.class,
       )"
@@ -142,10 +142,10 @@ function onUpdate(value: DateValue | undefined): void {
                     :month="month.value"
                     :class="[
                       'flex h-8 w-8 items-center justify-center rounded-lg text-sm transition-colors mx-auto',
-                      'data-[selected]:bg-up data-[selected]:text-white data-[selected]:font-semibold',
+                      'data-[selected]:bg-ink data-[selected]:text-white data-[selected]:font-semibold',
                       'data-[today]:font-semibold',
                       'data-[outside-view]:opacity-30 data-[disabled]:opacity-30',
-                      isDark ? 'hover:bg-white/10' : 'hover:bg-up-soft',
+                      isDark ? 'hover:bg-white/10' : 'hover:bg-ink-soft',
                     ]"
                   />
                 </CalendarCell>

@@ -25,10 +25,10 @@ onBeforeUnmount(() => window.removeEventListener('pageshow', onPageShow))
 
 <template>
   <div class="card">
-    <h2 class="mb-1 font-display text-lg font-bold text-gray-900">
+    <h2 class="mb-1 font-display text-xl font-extrabold text-gray-900">
       登入
     </h2>
-    <p class="mb-5 text-sm text-gray-400">
+    <p class="mb-5 text-sm text-gray-500">
       本站採邀請制，請使用受邀的 Google 帳號登入
     </p>
 

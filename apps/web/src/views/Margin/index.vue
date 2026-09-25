@@ -78,7 +78,7 @@ function ratioClass(r: number): string {
 </script>
 
 <template>
-  <div ref="rootEl" class="mg -m-4 p-5 md:-m-6 md:p-7">
+  <div ref="rootEl" class="mg">
 
     <header class="page-head">
       <div>
@@ -182,8 +182,6 @@ function ratioClass(r: number): string {
 </template>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
-
 .mg {
   background: var(--bg);
   min-height: 100vh;
@@ -212,7 +210,7 @@ function ratioClass(r: number): string {
   transition: all 0.15s;
 }
 .tab:hover { color: var(--txt); }
-.tab-on { color: var(--txt); border-bottom-color: var(--up); }
+.tab-on { color: var(--txt); border-bottom-color: var(--ink); }
 
 .rows { display: flex; flex-direction: column; }
 .row {
@@ -221,7 +219,7 @@ function ratioClass(r: number): string {
   align-items: center;
   gap: 0.75rem;
   padding: 0.65rem 1rem;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--bd-soft);
   cursor: pointer;
   transition: background 0.12s;
 }
@@ -231,9 +229,9 @@ function ratioClass(r: number): string {
   font-weight: 600;
   letter-spacing: 0.05em;
   color: var(--muted);
-  background: #fafbfc;
+  background: #faf7f1;
 }
-.row-head:hover { background: #fafbfc; }
+.row-head:hover { background: #faf7f1; }
 .row-head .th-r { text-align: right; min-width: 5.5rem; }
 .row-head .th-r:last-child { min-width: 11rem; padding-left: 1rem; }
 .row:last-child { border-bottom: none; }
@@ -249,4 +247,19 @@ function ratioClass(r: number): string {
 .is-gold { color: var(--gold); }
 .sub { display: none; font-size: 0.66rem; color: var(--muted); text-align: right; white-space: nowrap; padding-left: 1rem; min-width: 11rem; }
 @media (min-width: 768px) { .sub { display: block; } }
+/* 手機：兩行排版，細節不省略（上：名次/名稱/數值；下：強弱條/明細） */
+@media (max-width: 767px) {
+  .row-head { display: none; }
+  .row {
+    grid-template-columns: 1.5rem minmax(0, 1fr) auto;
+    grid-template-areas: 'rk name val' 'rk bar sub';
+    row-gap: 0.3rem;
+    padding: 0.7rem 0.9rem;
+  }
+  .rk { grid-area: rk; align-self: start; padding-top: 0.15rem; }
+  .name { grid-area: name; }
+  .bar-wrap { grid-area: bar; height: 0.8rem; }
+  .val { grid-area: val; min-width: 0; }
+  .sub { grid-area: sub; display: block; min-width: 0; padding-left: 0; }
+}
 </style>

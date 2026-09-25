@@ -16,7 +16,8 @@ export default defineConfig({
   server: {
     port: 3003,
     proxy: {
-      '/api': { target: 'http://localhost:3001', changeOrigin: true },
+      // 預設接本機 api；接 docker 時設 VITE_API_PROXY=http://localhost:8081（admin nginx 會注入 X-Admin-Key）
+      '/api': { target: process.env.VITE_API_PROXY ?? 'http://localhost:3001', changeOrigin: true },
     },
   },
 })

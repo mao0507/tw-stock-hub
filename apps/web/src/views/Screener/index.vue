@@ -262,7 +262,7 @@ function fmtAmt(v: number | null): string {
           找到 <strong class="text-gray-900">{{ total }}</strong> 支符合條件
           <span
             v-if="total >= 200"
-            class="ml-1 text-xs text-amber-500"
+            class="ml-1 text-xs text-[#9a6416]"
           >（顯示前 200 筆）</span>
         </span>
         <AppButton
@@ -294,7 +294,7 @@ function fmtAmt(v: number | null): string {
           :on-row-click="(row) => goToStock(String(row['stockId']))"
         >
           <template #cell-stockId="{ value }">
-            <span class="font-mono text-sm font-semibold text-blue-600 cursor-pointer hover:underline">{{ value }}</span>
+            <span class="font-mono text-sm font-semibold text-ink cursor-pointer hover:underline">{{ value }}</span>
           </template>
           <template #cell-close="{ value }">
             <span class="font-mono text-sm">{{ (value as number).toFixed(2) }}</span>

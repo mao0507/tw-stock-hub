@@ -101,7 +101,7 @@ function go(id: string): void {
 </script>
 
 <template>
-  <div ref="rootEl" class="inst -m-4 p-5 md:-m-6 md:p-7">
+  <div ref="rootEl" class="inst">
 
     <!-- Header -->
     <header class="head">
@@ -244,8 +244,6 @@ function go(id: string): void {
 </template>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
-
 /* 色票 token 來自全域 :root（見 DESIGN.md / main.css） */
 .inst {
   background: var(--bg);
@@ -272,7 +270,7 @@ function go(id: string): void {
   line-height: 1;
 }
 .head-sub {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.7rem;
   letter-spacing: 0.35em;
   color: var(--muted);
@@ -307,7 +305,7 @@ function go(id: string): void {
   transition: all 0.15s;
 }
 .seg:hover { color: var(--txt); }
-.seg-on { color: var(--txt); border-bottom-color: var(--up); }
+.seg-on { color: var(--txt); border-bottom-color: var(--ink); }
 .seg-group.sm .seg { font-size: 0.75rem; padding: 0.25rem 0.5rem; }
 
 .pill-group { display: flex; gap: 0.25rem; }
@@ -321,7 +319,7 @@ function go(id: string): void {
   transition: all 0.15s;
 }
 .pill:hover { background: var(--bg); }
-.pill-on { background: var(--txt); color: #fff; border-color: var(--txt); }
+.pill-on { background: var(--ink); color: #fff; border-color: var(--ink); }
 
 .bs-group { display: flex; border: 1px solid var(--bd); border-radius: 8px; overflow: hidden; }
 .bs {
@@ -351,7 +349,7 @@ function go(id: string): void {
 }
 .board-title { font-size: 0.95rem; font-weight: 700; }
 .board-tag {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.7rem;
   letter-spacing: 0.1em;
   color: var(--muted);
@@ -374,7 +372,7 @@ function go(id: string): void {
   transition: all 0.15s;
 }
 .tab:hover { color: var(--txt); }
-.tab-on { color: var(--txt); border-bottom-color: var(--up); }
+.tab-on { color: var(--txt); border-bottom-color: var(--ink); }
 
 .streak-ctrl-lbl { font-size: 0.78rem; color: var(--muted); font-weight: 500; }
 
@@ -388,9 +386,9 @@ function go(id: string): void {
   font-weight: 600;
   letter-spacing: 0.05em;
   color: var(--muted);
-  background: #fafbfc;
+  background: #faf7f1;
 }
-.row-head:hover { background: #fafbfc; }
+.row-head:hover { background: #faf7f1; }
 .row-head .th-r { text-align: right; min-width: 5.5rem; }
 .row-head .th-r:last-child { min-width: 6.5rem; padding-left: 1rem; }
 .row-head .th-flow { padding-left: 0.1rem; }
@@ -400,7 +398,7 @@ function go(id: string): void {
   align-items: center;
   gap: 0.75rem;
   padding: 0.65rem 1rem;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--bd-soft);
   cursor: pointer;
   transition: background 0.12s;
 }
@@ -408,7 +406,7 @@ function go(id: string): void {
 .row:hover { background: var(--bg); }
 
 .rk {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--muted);
@@ -418,15 +416,15 @@ function go(id: string): void {
 
 .name { display: flex; flex-direction: column; min-width: 0; }
 .nm { font-size: 0.88rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.id { font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; color: var(--muted); }
+.id { font-family: var(--font-mono); font-size: 0.68rem; color: var(--muted); }
 
 .bar-wrap { height: 1.1rem; display: flex; align-items: center; }
 .bar { height: 0.7rem; border-radius: 3px; min-width: 2px; transition: width 0.4s ease; }
-.bar-up { background: linear-gradient(90deg, rgba(230,57,80,0.45), var(--up)); }
-.bar-dn { background: linear-gradient(90deg, rgba(16,183,122,0.45), var(--dn)); }
+.bar-up { background: linear-gradient(90deg, rgba(194,65,45,0.45), var(--up)); }
+.bar-dn { background: linear-gradient(90deg, rgba(28,124,84,0.45), var(--dn)); }
 
 .net {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.85rem;
   font-weight: 600;
   text-align: right;
@@ -440,7 +438,7 @@ function go(id: string): void {
   display: none;
   flex-direction: column;
   gap: 0.2rem;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.66rem;
   text-align: right;
   line-height: 1.5;
@@ -476,19 +474,34 @@ function go(id: string): void {
   flex-direction: column;
   gap: 0.45rem;
 }
-.streak:hover { border-color: var(--muted); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(15,23,42,0.06); }
+.streak:hover { border-color: var(--muted); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(29,36,32,0.06); }
 .streak-top { display: flex; align-items: baseline; gap: 0.4rem; }
 .streak-mid { }
 .flame {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.7rem;
   font-weight: 600;
   padding: 0.15rem 0.45rem;
   border-radius: 5px;
 }
-.flame-up { color: var(--up); background: rgba(230,57,80,0.1); }
-.flame-dn { color: var(--dn); background: rgba(16,183,122,0.1); }
+.flame-up { color: var(--up); background: rgba(194,65,45,0.1); }
+.flame-dn { color: var(--dn); background: rgba(28,124,84,0.1); }
 .streak-bot { display: flex; align-items: baseline; justify-content: space-between; }
-.streak-net { font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; font-weight: 600; }
-.streak-close { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--muted); }
+.streak-net { font-family: var(--font-mono); font-size: 0.85rem; font-weight: 600; }
+.streak-close { font-family: var(--font-mono); font-size: 0.75rem; color: var(--muted); }
+/* 手機：兩行排版，細節不省略（上：名次/名稱/數值；下：強弱條/明細） */
+@media (max-width: 767px) {
+  .row-head { display: none; }
+  .row {
+    grid-template-columns: 1.5rem minmax(0, 1fr) auto;
+    grid-template-areas: 'rk name val' 'rk bar sub';
+    row-gap: 0.3rem;
+    padding: 0.7rem 0.9rem;
+  }
+  .rk { grid-area: rk; align-self: start; padding-top: 0.15rem; }
+  .name { grid-area: name; }
+  .bar-wrap { grid-area: bar; height: 0.8rem; }
+  .net { grid-area: val; min-width: 0; }
+  .bsv { grid-area: sub; display: flex; flex-direction: row; gap: 0.6rem; justify-content: flex-end; min-width: 0; padding-left: 0; }
+}
 </style>

@@ -150,7 +150,7 @@ function goToStock(id: string): void {
       <div class="flex items-center gap-2 border-b border-gray-100 px-4 py-3">
         <span
           class="h-3 w-3 rounded-full"
-          :style="{ backgroundColor: section.group?.color ?? '#d1d5db' }"
+          :style="{ backgroundColor: section.group?.color ?? '#cdc4b1' }"
           aria-hidden="true"
         />
         <h2 class="font-semibold text-gray-800">
@@ -205,23 +205,24 @@ function goToStock(id: string): void {
         這個分組還沒有股票，可從其他分組移入
       </p>
 
-      <ul class="divide-y divide-gray-50">
+      <ul class="divide-y divide-paper-line">
         <li
           v-for="(item, iIdx) in section.items"
           :key="item.stockId"
-          class="flex flex-wrap items-center gap-3 px-4 py-3"
+          class="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3"
         >
           <button
             type="button"
-            class="flex min-w-[8rem] flex-1 items-center gap-2 text-left"
+            class="flex min-h-[40px] min-w-0 flex-1 items-center gap-2 text-left"
             @click="goToStock(item.stockId)"
           >
-            <span class="font-mono text-sm font-bold text-blue-600 hover:underline">{{ item.stockId }}</span>
+            <span class="font-mono text-sm font-bold text-ink hover:underline">{{ item.stockId }}</span>
             <span class="font-medium text-gray-800">{{ item.name }}</span>
           </button>
 
           <StockPriceTag
             v-if="item.close !== null"
+            class="shrink-0"
             :price="item.close"
             :change-pct="item.changePct"
             size="sm"
@@ -231,60 +232,63 @@ function goToStock(id: string): void {
             class="text-xs text-gray-400"
           >無行情</span>
 
-          <select
-            class="input-field h-8 w-28 py-0 text-xs"
-            :value="item.groupId ?? ''"
-            aria-label="移動到分組"
-            :disabled="busy"
-            @change="onMoveToGroup(item, ($event.target as HTMLSelectElement).value)"
-          >
-            <option value="">
-              未分組
-            </option>
-            <option
-              v-for="g in groups"
-              :key="g.id"
-              :value="g.id"
-            >
-              {{ g.name }}
-            </option>
-          </select>
-
-          <div class="flex items-center gap-1">
-            <AppButton
-              size="sm"
-              variant="ghost"
-              :disabled="iIdx === 0 || busy"
-              aria-label="上移"
-              @click="run(() => store.moveItem(item.stockId, -1), '調整順序失敗')"
-            >
-              ↑
-            </AppButton>
-            <AppButton
-              size="sm"
-              variant="ghost"
-              :disabled="iIdx === section.items.length - 1 || busy"
-              aria-label="下移"
-              @click="run(() => store.moveItem(item.stockId, 1), '調整順序失敗')"
-            >
-              ↓
-            </AppButton>
-            <AppButton
-              size="sm"
-              variant="ghost"
-              @click="openNote(item)"
-            >
-              備註
-            </AppButton>
-            <AppButton
-              size="sm"
-              variant="ghost"
-              class="text-red-500"
+          <!-- 手機：操作列獨立一行；桌機併在同一列 -->
+          <div class="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end">
+            <select
+              class="input-field h-9 w-28 py-0 text-xs"
+              :value="item.groupId ?? ''"
+              aria-label="移動到分組"
               :disabled="busy"
-              @click="removeTarget = item"
+              @change="onMoveToGroup(item, ($event.target as HTMLSelectElement).value)"
             >
-              移除
-            </AppButton>
+              <option value="">
+                未分組
+              </option>
+              <option
+                v-for="g in groups"
+                :key="g.id"
+                :value="g.id"
+              >
+                {{ g.name }}
+              </option>
+            </select>
+
+            <div class="flex items-center gap-1">
+              <AppButton
+                size="sm"
+                variant="ghost"
+                :disabled="iIdx === 0 || busy"
+                aria-label="上移"
+                @click="run(() => store.moveItem(item.stockId, -1), '調整順序失敗')"
+              >
+                ↑
+              </AppButton>
+              <AppButton
+                size="sm"
+                variant="ghost"
+                :disabled="iIdx === section.items.length - 1 || busy"
+                aria-label="下移"
+                @click="run(() => store.moveItem(item.stockId, 1), '調整順序失敗')"
+              >
+                ↓
+              </AppButton>
+              <AppButton
+                size="sm"
+                variant="ghost"
+                @click="openNote(item)"
+              >
+                備註
+              </AppButton>
+              <AppButton
+                size="sm"
+                variant="ghost"
+                class="text-red-500"
+                :disabled="busy"
+                @click="removeTarget = item"
+              >
+                移除
+              </AppButton>
+            </div>
           </div>
 
           <p

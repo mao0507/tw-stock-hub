@@ -24,7 +24,7 @@ const initials = computed(() => props.nickname.slice(0, 2))
     :class="[
       'flex flex-shrink-0 items-center justify-center rounded-full',
       sizeClass[size ?? 'md'],
-      avatarUrl ? 'overflow-hidden' : 'bg-blue-50 font-semibold text-blue-600',
+      avatarUrl ? 'overflow-hidden' : 'bg-ink-soft font-semibold text-ink',
     ]"
   >
     <img

@@ -57,7 +57,7 @@ onMounted(() => { void fetchUsers() })
         class="input-field w-64"
       >
       <span class="text-sm text-gray-500">
-        共 <strong class="font-mono text-white">{{ users.length }}</strong> 位曾登入的使用者
+        共 <strong class="font-mono text-gray-900">{{ users.length }}</strong> 位曾登入的使用者
       </span>
     </div>
 
@@ -111,7 +111,7 @@ onMounted(() => { void fetchUsers() })
           <tr v-if="!filteredUsers.length">
             <td
               colspan="4"
-              class="border-b-0 py-8 text-center text-sm text-gray-600"
+              class="border-b-0 py-8 text-center text-sm text-gray-500"
             >
               {{ searchQuery ? '無符合搜尋結果' : '目前沒有使用者' }}
             </td>

@@ -28,62 +28,64 @@ const navItems = [
 </script>
 
 <template>
-  <div class="flex min-h-screen bg-gray-950 text-white">
-    <aside class="flex w-56 flex-shrink-0 flex-col border-r border-white/10 bg-gray-900/60">
-      <div class="border-b border-white/10 px-5 py-5">
-        <div class="font-display text-base font-bold tracking-tight text-up">
-          台股盤後站
-        </div>
-        <div class="text-[11px] font-medium uppercase tracking-wider text-gray-500">
-          Admin Panel
-        </div>
+  <div class="min-h-screen bg-paper text-gray-900 lg:flex">
+    <!-- 側欄（手機改為頂部橫向捲動列） -->
+    <aside class="flex flex-shrink-0 flex-col border-paper-line lg:sticky lg:top-0 lg:h-screen lg:w-[232px] lg:border-r">
+      <div class="flex items-baseline gap-3 px-4 pt-4 lg:flex-col lg:gap-0.5 lg:px-6 lg:pt-8">
+        <span class="font-display text-xl font-extrabold text-ink lg:text-[26px]">存股帳本</span>
+        <span class="font-mono text-[11px] tracking-[0.18em] text-gray-500">ADMIN PANEL</span>
       </div>
 
-      <nav class="flex-1 space-y-1 p-3">
+      <nav
+        aria-label="管理選單"
+        class="scroll-x flex gap-1 border-b border-paper-line px-3 py-3 lg:mt-6 lg:flex-1 lg:flex-col lg:border-0 lg:px-6"
+      >
         <router-link
           v-for="item in navItems"
           :key="item.name"
           :to="{ name: item.name }"
+          :aria-current="route.name === item.name ? 'page' : undefined"
           :class="[
-            'group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-200 ease-out',
+            'flex min-h-[42px] flex-shrink-0 items-center gap-3 whitespace-nowrap rounded-lg px-3 text-[15px] transition-colors',
             route.name === item.name
-              ? 'bg-white/[0.07] font-medium text-white'
-              : 'text-gray-400 hover:bg-white/5 hover:text-white',
+              ? 'bg-ink font-medium text-paper'
+              : 'text-gray-800 hover:bg-gray-100',
           ]"
         >
-          <span
-            v-if="route.name === item.name"
-            class="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-up"
-          />
           <svg
             class="h-[18px] w-[18px] flex-shrink-0"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            stroke-width="2"
+            stroke-width="1.8"
             stroke-linecap="round"
             stroke-linejoin="round"
+            aria-hidden="true"
           ><path :d="item.icon" /></svg>
           <span>{{ item.label }}</span>
         </router-link>
       </nav>
 
-      <div class="border-t border-white/10 px-5 py-4 text-[11px] text-gray-600">
+      <div class="hidden border-t border-paper-line px-6 py-4 font-mono text-[11px] text-gray-500 lg:block">
         v1.0 · {{ new Date().getFullYear() }}
       </div>
     </aside>
 
-    <main class="flex-1 overflow-auto">
-      <header class="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-white/10 bg-gray-950/80 px-6 backdrop-blur">
-        <h1 class="font-display text-sm font-semibold text-white/80">
-          {{ route.meta['title'] ?? 'Admin' }}
-        </h1>
-        <span class="font-mono text-xs text-gray-500">
-          {{ new Date().toLocaleString('zh-TW') }}
-        </span>
-      </header>
-
-      <div class="animate-fade-up p-6">
+    <main class="min-w-0 flex-1">
+      <div class="mx-auto w-full max-w-[1400px] animate-fade-up px-4 py-6 lg:px-12 lg:py-9">
+        <header class="page-head mb-6">
+          <div>
+            <h1 class="page-head-title">
+              {{ route.meta['title'] ?? 'Admin' }}
+            </h1>
+            <div class="page-head-sub">
+              TW STOCK HUB · 管理後台
+            </div>
+          </div>
+          <span class="page-head-meta font-mono">
+            {{ new Date().toLocaleString('zh-TW') }}
+          </span>
+        </header>
         <RouterView />
       </div>
     </main>

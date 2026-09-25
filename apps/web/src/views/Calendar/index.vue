@@ -5,7 +5,8 @@ import type { ExDividendItem } from '@tw-stock-hub/types'
 import { LoadingSkeleton } from '@tw-stock-hub/ui'
 
 type Mode = 'calendar' | 'list'
-const mode = ref<Mode>('calendar')
+// 手機月曆格太窄，預設清單
+const mode = ref<Mode>(window.matchMedia?.('(max-width: 767px)').matches ? 'list' : 'calendar')
 
 const items = ref<ExDividendItem[]>([])
 const loading = ref(true)
@@ -109,7 +110,20 @@ function evLabel(it: ExDividendItem): string {
 </script>
 
 <template>
-  <div class="cal-page -m-4 p-4 md:-m-6 md:p-6">
+  <div class="cal-page flex flex-col gap-5">
+    <header class="page-head">
+      <div>
+        <h1 class="page-head-title">
+          除權息行事曆
+        </h1>
+        <div class="page-head-sub">
+          EX-DIVIDEND CALENDAR
+        </div>
+      </div>
+      <div class="page-head-meta">
+        除權息、發放與股東會日程
+      </div>
+    </header>
     <div class="cal-card">
       <!-- 工具列 -->
       <div class="toolbar">
@@ -214,9 +228,8 @@ function evLabel(it: ExDividendItem): string {
 </template>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
-.cal-page { min-height: 100vh; }
-.cal-card { background: var(--sf); border: 1px solid var(--bd); border-radius: 16px; overflow: hidden; box-shadow: 0 2px 8px rgba(15,23,42,0.04); }
+
+.cal-card { background: var(--sf); border: 1px solid var(--bd); border-radius: 16px; overflow: hidden; box-shadow: 0 2px 8px rgba(29,36,32,0.04); }
 
 /* 工具列 */
 .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.25rem; flex-wrap: wrap; }
@@ -225,7 +238,7 @@ function evLabel(it: ExDividendItem): string {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   width: 3.2rem; height: 3.2rem; border: 1px solid var(--bd); border-radius: 12px;
 }
-.db-m { font-size: 0.62rem; color: var(--up); font-weight: 600; }
+.db-m { font-size: 0.62rem; color: var(--ink); font-weight: 600; }
 .db-d { font-size: 1.4rem; font-weight: 700; line-height: 1; color: var(--txt); }
 .tb-title { display: flex; align-items: center; gap: 0.5rem; font-size: 1.3rem; font-weight: 700; color: var(--txt); }
 .week-tag { font-size: 0.66rem; font-weight: 500; color: var(--muted); border: 1px solid var(--bd); border-radius: 5px; padding: 0.1rem 0.4rem; }
@@ -234,7 +247,7 @@ function evLabel(it: ExDividendItem): string {
 .tb-right { display: flex; align-items: center; gap: 0.6rem; }
 .seg-toggle { display: flex; border: 1px solid var(--bd); border-radius: 8px; overflow: hidden; }
 .st { font-size: 0.78rem; font-weight: 500; padding: 0.4rem 0.85rem; color: var(--muted); transition: all 0.15s; }
-.st-on { background: var(--up); color: #fff; }
+.st-on { background: var(--ink); color: #fff; }
 .nav-cluster { display: flex; align-items: center; gap: 0.3rem; border: 1px solid var(--bd); border-radius: 8px; padding: 0.15rem; }
 .nav-btn { width: 1.8rem; height: 1.8rem; border-radius: 6px; font-size: 1rem; color: var(--muted); display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
 .nav-btn:hover { background: var(--bg); color: var(--txt); }
@@ -242,25 +255,25 @@ function evLabel(it: ExDividendItem): string {
 .today-btn:hover { background: var(--bg); }
 
 /* 格線 */
-.grid-head { display: grid; grid-template-columns: repeat(7, 1fr); border-top: 1px solid var(--bd); border-bottom: 1px solid var(--bd); }
+.grid-head { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-top: 1px solid var(--bd); border-bottom: 1px solid var(--bd); }
 .gh { text-align: center; padding: 0.6rem 0; font-size: 0.72rem; font-weight: 500; color: var(--muted); }
 .gh-we { color: var(--muted); }
-.grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+.grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
 .cell {
-  min-height: 118px; border-right: 1px solid #eef1f5; border-bottom: 1px solid #eef1f5;
+  min-height: 118px; border-right: 1px solid var(--bd-soft); border-bottom: 1px solid var(--bd-soft);
   padding: 0.45rem; display: flex; flex-direction: column; gap: 0.3rem; transition: background 0.12s;
 }
 .cell:nth-child(7n) { border-right: none; }
-.cell-out { background: #fafbfc; }
-.cell-out .cell-day { color: #cbd5e1; }
-.cell-day { font-family: var(--font-mono); font-size: 0.8rem; font-weight: 500; color: #64748b; padding: 0.1rem 0.15rem; }
+.cell-out { background: #faf7f1; }
+.cell-out .cell-day { color: #cdc4b1; }
+.cell-day { font-family: var(--font-mono); font-size: 0.8rem; font-weight: 500; color: var(--muted); padding: 0.1rem 0.15rem; }
 .cell-day-today {
-  background: var(--up); color: #fff; width: 1.6rem; height: 1.6rem; border-radius: 50%;
+  background: var(--ink); color: #fff; width: 1.6rem; height: 1.6rem; border-radius: 50%;
   display: flex; align-items: center; justify-content: center; font-weight: 700;
 }
 .cell-has { cursor: pointer; }
-.cell-has:hover { background: #fafbfc; }
-.cell-sel { box-shadow: inset 0 0 0 2px var(--up); }
+.cell-has:hover { background: #faf7f1; }
+.cell-sel { box-shadow: inset 0 0 0 2px var(--ink); }
 
 .events { display: flex; flex-direction: column; gap: 3px; overflow: hidden; }
 .event {
@@ -272,31 +285,31 @@ function evLabel(it: ExDividendItem): string {
 .ev-more { font-size: 0.62rem; color: var(--muted); padding-left: 0.4rem; }
 
 /* 事件配色（柔和底） */
-.ev-red    { background: #fdeaec; color: #c5283d; }
-.ev-amber  { background: #fef3e2; color: #b45309; }
-.ev-green  { background: #e7f7f0; color: #0c8a5c; }
-.ev-blue   { background: #e8f0fe; color: #1e5fc4; }
-.ev-violet { background: #f0ecfd; color: #6d3fd1; }
+.ev-red    { background: rgba(194,65,45,0.1); color: #a33322; }
+.ev-amber  { background: rgba(183,121,31,0.12); color: #8a5a12; }
+.ev-green  { background: rgba(28,124,84,0.1); color: #165c3f; }
+.ev-blue   { background: rgba(47,93,138,0.1); color: #2f5d8a; }
+.ev-violet { background: rgba(107,79,138,0.1); color: #6b4f8a; }
 
 /* 選中日 */
 .day-detail { border-top: 1px solid var(--bd); padding: 1rem 1.25rem; }
 .dd-hd { display: flex; align-items: baseline; gap: 0.6rem; margin-bottom: 0.7rem; }
 .dd-date { font-size: 1rem; font-weight: 700; color: var(--txt); }
-.dd-cnt { font-size: 0.78rem; color: var(--up); font-weight: 600; }
+.dd-cnt { font-size: 0.78rem; color: var(--ink); font-weight: 600; }
 .dd-items { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .dd-item { display: flex; align-items: baseline; gap: 0.4rem; padding: 0.35rem 0.6rem; border: 1px solid var(--bd); border-radius: 7px; text-decoration: none; transition: background 0.12s; }
 .dd-item:hover { background: var(--bg); }
 .ci-name { font-size: 0.82rem; font-weight: 600; color: var(--txt); }
 .ci-id { font-size: 0.66rem; color: var(--muted); }
-.ci-div { font-size: 0.7rem; color: var(--up); }
+.ci-div { font-size: 0.7rem; color: var(--gold); }
 
 /* 清單 */
 .empty { padding: 3rem; text-align: center; color: var(--muted); }
 .day-list { display: flex; flex-direction: column; }
-.day-row { display: grid; grid-template-columns: 90px 1fr; gap: 1rem; padding: 0.75rem 1.25rem; border-top: 1px solid #eef1f5; }
+.day-row { display: grid; grid-template-columns: 90px 1fr; gap: 1rem; padding: 0.75rem 1.25rem; border-top: 1px solid var(--bd-soft); }
 .day-date { display: flex; flex-direction: column; gap: 0.25rem; font-weight: 700; font-size: 1rem; }
-.day-date.is-today { color: var(--up); }
-.today-tag { font-size: 0.62rem; color: #fff; background: var(--up); padding: 0.1rem 0.35rem; border-radius: 4px; width: fit-content; }
+.day-date.is-today { color: var(--ink); }
+.today-tag { font-size: 0.62rem; color: #fff; background: var(--ink); padding: 0.1rem 0.35rem; border-radius: 4px; width: fit-content; }
 .future-tag { font-size: 0.62rem; color: var(--muted); }
 .day-items { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .day-pill { display: flex; align-items: baseline; gap: 0.4rem; padding: 0.35rem 0.6rem; border-radius: 7px; text-decoration: none; font-size: 0.78rem; }

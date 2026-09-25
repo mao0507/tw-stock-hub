@@ -68,7 +68,7 @@ function buildOption(): ECOption {
         type: 'bar' as const,
         data: revenues,
         barWidth: '58%',
-        itemStyle: { color: 'rgba(106, 169, 240, 0.75)', borderRadius: [3, 3, 0, 0] },
+        itemStyle: { color: 'rgba(31, 77, 58, 0.55)', borderRadius: [3, 3, 0, 0] },
       },
       {
         name: '年增率',
@@ -78,8 +78,8 @@ function buildOption(): ECOption {
         smooth: 0.3,
         symbol: 'none',
         connectNulls: true,
-        lineStyle: { color: '#d97706', width: 2 },
-        itemStyle: { color: '#d97706' },
+        lineStyle: { color: '#b7791f', width: 2 },
+        itemStyle: { color: '#b7791f' },
       },
     ],
     tooltip: {
@@ -94,7 +94,7 @@ function buildOption(): ECOption {
         const yoyClr = (r.yoyPct ?? 0) >= 0 ? STOCK_COLORS.up : STOCK_COLORS.down
         const momClr = (r.momPct ?? 0) >= 0 ? STOCK_COLORS.up : STOCK_COLORS.down
         return `<div style="font-size:13px;line-height:1.7">
-          <div style="color:#9ca3af;font-size:12px;margin-bottom:2px">${fmtYM(r.yearMonth)}</div>
+          <div style="color:#b8b0a0;font-size:12px;margin-bottom:2px">${fmtYM(r.yearMonth)}</div>
           <div>營收 <b style="font-size:14px">${r.revenue != null ? (r.revenue / 1e5).toFixed(1) : '—'} 億</b></div>
           <div>年增 <b style="color:${yoyClr}">${pct(r.yoyPct)}</b> · 月增 <b style="color:${momClr}">${pct(r.momPct)}</b></div>
         </div>`

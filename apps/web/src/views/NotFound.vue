@@ -15,7 +15,7 @@ const router = useRouter()
       您訪問的頁面不存在或已移除
     </p>
     <button
-      class="mt-2 rounded-lg bg-up px-6 py-2.5 text-sm font-medium text-white hover:bg-up/90"
+      class="mt-2 rounded-lg bg-ink px-6 py-2.5 text-sm font-medium text-white hover:bg-ink-hover"
       @click="void router.push('/')"
     >
       回到首頁

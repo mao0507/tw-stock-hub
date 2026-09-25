@@ -38,7 +38,7 @@ function buildOption(): ECOption {
   const last = closes[closes.length - 1] ?? 0
   const isUp = last >= first
   const lineColor = isUp ? STOCK_COLORS.up : STOCK_COLORS.down
-  const areaTop = isUp ? 'rgba(230,57,80,0.15)' : 'rgba(16,183,122,0.15)'
+  const areaTop = isUp ? 'rgba(194,65,45,0.14)' : 'rgba(28,124,84,0.14)'
 
   return {
     ...BASE_ECHARTS_OPTION,

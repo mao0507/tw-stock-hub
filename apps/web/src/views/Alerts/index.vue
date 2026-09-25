@@ -122,7 +122,7 @@ async function reset(id: string): Promise<void> {
         :class="item.isTriggered ? 'border-up bg-up-soft/30' : ''"
       >
         <div class="flex items-center gap-3">
-          <span class="font-mono text-sm font-bold text-blue-600">{{ item.stockId }}</span>
+          <span class="font-mono text-sm font-bold text-ink">{{ item.stockId }}</span>
           <span class="text-sm text-gray-700">{{ typeLabel[item.alertType] }}</span>
           <span class="font-mono text-sm font-semibold text-gray-900">{{ item.threshold }}</span>
           <span

@@ -95,7 +95,7 @@ async function submitBuy(form: CreateLotForm): Promise<void> {
     <a
       v-if="!isLoggedIn"
       :href="`/login?redirect=${encodeURIComponent(`/stocks/${stockId}`)}`"
-      class="text-xs text-gray-400 hover:text-up"
+      class="text-xs text-gray-400 hover:text-ink"
     >登入後可加入自選、記錄買入</a>
 
     <div

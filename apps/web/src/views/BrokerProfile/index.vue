@@ -48,7 +48,7 @@ const maxHist = computed(() =>
 <template>
   <div class="space-y-4">
     <button
-      class="text-sm text-gray-400 hover:text-up"
+      class="text-sm text-gray-400 hover:text-ink"
       @click="router.back()"
     >
       ← 返回分點總覽
@@ -120,7 +120,7 @@ const maxHist = computed(() =>
                 <td class="py-1.5">
                   <router-link
                     :to="`/stocks/${s.stockId}`"
-                    class="text-gray-700 hover:text-up"
+                    class="text-gray-700 hover:text-ink"
                   >{{ s.stockName }}</router-link>
                   <span class="ml-1 font-mono text-xs text-gray-400">{{ s.stockId }}</span>
                 </td>
@@ -144,7 +144,7 @@ const maxHist = computed(() =>
                 <td class="py-1.5">
                   <router-link
                     :to="`/stocks/${s.stockId}`"
-                    class="text-gray-700 hover:text-up"
+                    class="text-gray-700 hover:text-ink"
                   >{{ s.stockName }}</router-link>
                   <span class="ml-1 font-mono text-xs text-gray-400">{{ s.stockId }}</span>
                 </td>

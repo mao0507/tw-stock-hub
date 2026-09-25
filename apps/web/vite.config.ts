@@ -18,7 +18,8 @@ export default defineConfig({
   server: {
     port: 3000,
     proxy: {
-      '/api': { target: 'http://localhost:3001', changeOrigin: true },
+      // 預設接本機 api；要接 docker 起的整套服務時設 VITE_API_PROXY=http://localhost:8080
+      '/api': { target: process.env.VITE_API_PROXY ?? 'http://localhost:3001', changeOrigin: true },
     },
   },
 })
