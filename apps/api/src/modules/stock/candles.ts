@@ -18,9 +18,6 @@ export function weekKey(date: string): string {
 
 export const monthKey = (date: string) => date.slice(0, 7)
 
-/** 月 K 區間起點（該月 1 號） */
-export const monthStart = (date: string) => `${monthKey(date)}-01`
-
 /**
  * 日 K（由舊到新）彙總成週 K / 月 K：開 = 首日開、收 = 末日收、高低取極值、量加總。
  * 日期取該區間最後一個交易日；彙總後無漲跌幅。

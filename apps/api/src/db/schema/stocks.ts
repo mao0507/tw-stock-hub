@@ -134,3 +134,29 @@ export const etfInfo = stocksSchema.table('etf_info', {
   items: jsonb('items'),
   updatedDate: date('updated_date'),
 })
+
+export const marketIndex = stocksSchema.table('market_index', {
+  date: date('date').notNull(),
+  taiexClose: numeric('taiex_close', { precision: 12, scale: 2 }).notNull(),
+  taiexChange: numeric('taiex_change', { precision: 10, scale: 2 }).notNull(),
+  taiexChangePct: numeric('taiex_change_pct', { precision: 8, scale: 2 }).notNull(),
+  totalVolume: bigint('total_volume', { mode: 'number' }).notNull(),
+  totalValue: bigint('total_value', { mode: 'number' }).notNull(),
+  upCount: integer('up_count').notNull(),
+  downCount: integer('down_count').notNull(),
+  flatCount: integer('flat_count').notNull(),
+  limitUpCount: integer('limit_up_count').notNull(),
+  limitDownCount: integer('limit_down_count').notNull(),
+  taiexOpen: numeric('taiex_open', { precision: 12, scale: 2 }),
+  taiexHigh: numeric('taiex_high', { precision: 12, scale: 2 }),
+  taiexLow: numeric('taiex_low', { precision: 12, scale: 2 }),
+  taiexPrevClose: numeric('taiex_prev_close', { precision: 12, scale: 2 }),
+})
+
+export const sectorPerformance = stocksSchema.table('sector_performance', {
+  date: date('date').notNull(),
+  sectorName: varchar('sector_name', { length: 50 }).notNull(),
+  changePct: numeric('change_pct', { precision: 8, scale: 2 }).notNull(),
+  volume: bigint('volume', { mode: 'number' }),
+  value: bigint('value', { mode: 'number' }),
+})

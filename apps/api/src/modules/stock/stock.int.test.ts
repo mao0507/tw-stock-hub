@@ -147,14 +147,19 @@ describe('GET /api/stocks/:id/quote', () => {
     ])
   })
 
-  it('週 K 起點落在週中時往前補齊整週，第一根不會是半週', async () => {
-    const r = (await get<Quote[]>('/stocks/2330/quote?interval=weekly&from=2026-09-16')).body
-    expect(r[0]).toEqual({ date: '2026-09-18', open: 100, high: 114, low: 90, close: 109, volume: 5000, changePct: null })
+  it('週/月 K 的 limit 是 K 棒根數（先彙總再取最後 N 根，最舊一根是完整週期）', async () => {
+    const w = (await get<Quote[]>('/stocks/2330/quote?interval=weekly&limit=1')).body
+    expect(w).toEqual([{ date: '2026-09-25', open: 105, high: 119, low: 95, close: 114, volume: 5000, changePct: null }])
+    const m = (await get<Quote[]>('/stocks/2330/quote?interval=monthly&limit=3')).body
+    expect(m.map((q) => [q.date, q.open, q.close, q.volume])).toEqual([
+      ['2026-08-31', 90, 92, 500],
+      ['2026-09-25', 100, 114, 10000],
+    ])
   })
 
-  it('月 K 被 limit 切在月中時往前補齊整月', async () => {
-    const r = (await get<Quote[]>('/stocks/2330/quote?interval=monthly&limit=3')).body
-    expect(r.map((q) => [q.date, q.open, q.close, q.volume])).toEqual([['2026-09-25', 100, 114, 10000]])
+  it('from 落在週中時第一根只含 from 之後的資料', async () => {
+    const r = (await get<Quote[]>('/stocks/2330/quote?interval=weekly&from=2026-09-16')).body
+    expect(r[0]).toEqual({ date: '2026-09-18', open: 102, high: 114, low: 92, close: 109, volume: 3000, changePct: null })
   })
 
   it('查無股票回 404；參數錯誤回 400', async () => {

@@ -1,8 +1,8 @@
 import { createRoute, type OpenAPIHono, z } from '@hono/zod-openapi'
-import { and, asc, desc, eq, gte, ilike, lt, lte, or, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, gte, ilike, lte, or, sql } from 'drizzle-orm'
 import type { Db } from '../../db/client.js'
 import { dailyQuotes, stocks } from '../../db/schema/stocks.js'
-import { aggregate, type Candle, monthKey, monthStart, weekKey } from './candles.js'
+import { aggregate, type Candle, monthKey, weekKey } from './candles.js'
 import { cached, ErrorBody, findActiveStock, IdParam, json, num } from './shared.js'
 
 // 搜尋、個股資料、K 線（#4）
@@ -122,34 +122,18 @@ export function registerOverviewRoutes(app: OpenAPIHono, db: Db) {
     const { interval, from, to, limit } = c.req.valid('query')
     const result = await cached(`quote:${id}:${interval}:${from}:${to}:${limit}`, async () => {
       if (!(await findActive(id))) return { notFound: true as const }
-      // ponytail: 週/月 K 以最近 limit 筆日 K 彙總（與舊站行為一致）；要固定根數時改成依區間回推
-      const rows = await db
-        .select()
-        .from(dailyQuotes)
-        .where(
-          and(
-            eq(dailyQuotes.stockId, id),
-            from ? gte(dailyQuotes.date, from) : undefined,
-            to ? lte(dailyQuotes.date, to) : undefined,
-          ),
-        )
-        .orderBy(desc(dailyQuotes.date))
-        .limit(limit)
-      rows.reverse()
-
-      // 週/月 K：limit 或 from 可能切在週中/月中，往前補齊最舊那個區間，第一根才不會是殘缺的
-      const oldest = rows[0]?.date
-      if (oldest && interval !== 'daily') {
-        const periodStart = interval === 'weekly' ? weekKey(oldest) : monthStart(oldest)
-        if (periodStart < oldest) {
-          const head = await db
-            .select()
-            .from(dailyQuotes)
-            .where(and(eq(dailyQuotes.stockId, id), gte(dailyQuotes.date, periodStart), lt(dailyQuotes.date, oldest)))
-            .orderBy(asc(dailyQuotes.date))
-          rows.unshift(...head)
-        }
-      }
+      const range = and(
+        eq(dailyQuotes.stockId, id),
+        from ? gte(dailyQuotes.date, from) : undefined,
+        to ? lte(dailyQuotes.date, to) : undefined,
+      )
+      // 日 K：limit 為筆數。週/月 K：limit 為 K 棒根數 → 取區間內全部日 K 彙總後再取最後 N 根，
+      // 最舊一根才會是完整週期（有 from 時則從 from 起算）。
+      // ponytail: 單一個股 20 年約 5000 筆日 K，全取可接受；資料量變大時改依 limit 回推起始日
+      const rows =
+        interval === 'daily'
+          ? (await db.select().from(dailyQuotes).where(range).orderBy(desc(dailyQuotes.date)).limit(limit)).reverse()
+          : await db.select().from(dailyQuotes).where(range).orderBy(asc(dailyQuotes.date))
 
       const daily: Candle[] = rows.map((r) => ({
         date: r.date,
@@ -160,9 +144,8 @@ export function registerOverviewRoutes(app: OpenAPIHono, db: Db) {
         volume: r.volume,
         changePct: num(r.changePct),
       }))
-      if (interval === 'weekly') return { candles: aggregate(daily, weekKey) }
-      if (interval === 'monthly') return { candles: aggregate(daily, monthKey) }
-      return { candles: daily }
+      if (interval === 'daily') return { candles: daily }
+      return { candles: aggregate(daily, interval === 'weekly' ? weekKey : monthKey).slice(-limit) }
     })
     if ('notFound' in result) return c.json({ error: `找不到股票代號 ${id}` }, 404)
     return c.json(result.candles, 200)
