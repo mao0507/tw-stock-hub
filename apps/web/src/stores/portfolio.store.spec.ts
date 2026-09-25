@@ -8,6 +8,9 @@ vi.mock('@tw-stock-hub/api-client', () => ({
     createLot: vi.fn(),
     updateLot: vi.fn(),
     deleteLot: vi.fn(),
+    createSell: vi.fn(),
+    updateSell: vi.fn(),
+    deleteSell: vi.fn(),
   },
 }))
 
@@ -15,7 +18,9 @@ import { portfolioApi } from '@tw-stock-hub/api-client'
 
 const summary = (shares: number) => ({
   items: [{ stockId: '2330', shares }],
-  totals: { costBasis: 0, marketValue: 0, unrealizedPnl: 0, returnPct: null, staleCount: 0 },
+  closed: [],
+  totals: {
+    realizedPnl: 0, costBasis: 0, marketValue: 0, unrealizedPnl: 0, returnPct: null, staleCount: 0 },
 })
 
 describe('usePortfolioStore', () => {
@@ -30,6 +35,7 @@ describe('usePortfolioStore', () => {
     await store.fetchHoldings()
     expect(store.holdings).toHaveLength(1)
     expect(store.totals?.staleCount).toBe(0)
+    expect(store.closed).toEqual([])
     expect(store.isLoading).toBe(false)
   })
 
@@ -45,6 +51,9 @@ describe('usePortfolioStore', () => {
     ['addLot', () => usePortfolioStore().addLot({ stockId: '2330', boughtAt: '2026-01-02', price: 1, shares: 1, fee: 0 })],
     ['updateLot', () => usePortfolioStore().updateLot('l1', { shares: 2 })],
     ['removeLot', () => usePortfolioStore().removeLot('l1')],
+    ['addSell', () => usePortfolioStore().addSell({ stockId: '2330', soldAt: '2026-01-02', price: 1, shares: 1, fee: 0, tax: 0 })],
+    ['updateSell', () => usePortfolioStore().updateSell('s1', { shares: 2 })],
+    ['removeSell', () => usePortfolioStore().removeSell('s1')],
   ])('%s 成功後重新載入持股（由後端重算）', async (_name, run) => {
     vi.mocked(portfolioApi.getHoldings).mockResolvedValue(summary(2000) as never)
     await run()

@@ -92,7 +92,7 @@ export const sellTransactions = members.table(
     fee: numeric('fee', { precision: 12, scale: 2 }).notNull().default('0'),
     tax: numeric('tax', { precision: 12, scale: 2 }).notNull().default('0'),
     avgCostAtSale: numeric('avg_cost_at_sale', { precision: 12, scale: 4 }).notNull(),
-    realizedPnl: numeric('realized_pnl', { precision: 14, scale: 2 }).notNull(),
+    realizedPnl: numeric('realized_pnl', { precision: 18, scale: 2 }).notNull(),
     createdAt: createdAt(),
   },
   (t) => [index('idx_sell_tx_user_stock').on(t.userId, t.stockId, t.soldAt)],
@@ -108,7 +108,7 @@ export const holdings = members.table(
     avgCost: numeric('avg_cost', { precision: 12, scale: 4 }).notNull(),
     /** 持有部位總成本（含手續費）；另存以免 avg_cost 四捨五入累積誤差 */
     costBasis: numeric('cost_basis', { precision: 16, scale: 2 }).notNull().default('0'),
-    realizedPnl: numeric('realized_pnl', { precision: 14, scale: 2 }).notNull().default('0'),
+    realizedPnl: numeric('realized_pnl', { precision: 18, scale: 2 }).notNull().default('0'),
     /** 依除息日持有股數計算的累計現金股利 */
     earnedDividend: numeric('earned_dividend', { precision: 14, scale: 2 }).notNull().default('0'),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

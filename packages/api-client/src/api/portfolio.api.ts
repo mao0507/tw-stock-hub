@@ -1,4 +1,6 @@
-import type { CreateLotForm, HoldingLot, HoldingsSummary, UpdateLotForm } from '@tw-stock-hub/types'
+import type {
+  CreateLotForm, CreateSellForm, HoldingLot, HoldingsSummary, SellTransaction, UpdateLotForm, UpdateSellForm,
+} from '@tw-stock-hub/types'
 import { apiClient } from '../axios'
 
 export const portfolioApi = {
@@ -24,5 +26,24 @@ export const portfolioApi = {
 
   async deleteLot(id: string): Promise<void> {
     await apiClient.delete(`/api/portfolio/lots/${id}`)
+  },
+
+  async listSells(stockId?: string): Promise<SellTransaction[]> {
+    const { data } = await apiClient.get<SellTransaction[]>('/api/portfolio/sells', { params: { stockId } })
+    return data
+  },
+
+  async createSell(form: CreateSellForm): Promise<SellTransaction> {
+    const { data } = await apiClient.post<SellTransaction>('/api/portfolio/sells', form)
+    return data
+  },
+
+  async updateSell(id: string, form: UpdateSellForm): Promise<SellTransaction> {
+    const { data } = await apiClient.patch<SellTransaction>(`/api/portfolio/sells/${id}`, form)
+    return data
+  },
+
+  async deleteSell(id: string): Promise<void> {
+    await apiClient.delete(`/api/portfolio/sells/${id}`)
   },
 }

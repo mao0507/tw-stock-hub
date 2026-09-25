@@ -29,6 +29,33 @@ const LotFields = {
 const LotCreate = z.object({ stockId: StockId, ...LotFields, fee: LotFields.fee.default(0) })
 const LotPatch = z.object(LotFields).partial().refine((v) => Object.keys(v).length > 0, '至少修改一個欄位')
 
+const SellFields = {
+  soldAt: tradeDate,
+  price: LotFields.price,
+  shares: LotFields.shares,
+  fee: LotFields.fee,
+  tax: z.number().min(0).max(1_000_000),
+}
+const SellCreate = z.object({
+  stockId: StockId,
+  ...SellFields,
+  fee: SellFields.fee.default(0),
+  tax: SellFields.tax.default(0),
+})
+const SellPatch = z.object(SellFields).partial().refine((v) => Object.keys(v).length > 0, '至少修改一個欄位')
+
+const Sell = z.object({
+  id: z.string().uuid(),
+  stockId: z.string(),
+  soldAt: z.string(),
+  price: z.number(),
+  shares: z.number(),
+  fee: z.number(),
+  tax: z.number(),
+  avgCostAtSale: z.number(),
+  realizedPnl: z.number(),
+})
+
 const Lot = z.object({
   id: z.string().uuid(),
   stockId: z.string(),
@@ -44,6 +71,7 @@ const Holding = z.object({
   shares: z.number(),
   avgCost: z.number(),
   costBasis: z.number(),
+  realizedPnl: z.number(),
   price: z.number().nullable(),
   priceDate: z.string().nullable(),
   stale: z.boolean(),
@@ -55,7 +83,9 @@ const Holding = z.object({
 
 const Holdings = z.object({
   items: z.array(Holding),
+  closed: z.array(z.object({ stockId: z.string(), name: z.string(), realizedPnl: z.number() })),
   totals: z.object({
+    realizedPnl: z.number(),
     costBasis: z.number(),
     marketValue: z.number(),
     unrealizedPnl: z.number(),
@@ -65,6 +95,7 @@ const Holdings = z.object({
 })
 
 const ErrorBody = z.object({ error: z.string() })
+const ConflictBody = z.object({ error: z.string(), sellId: z.string().uuid() })
 const IdParam = z.object({ id: z.string().uuid() })
 const json = <T extends z.ZodType>(schema: T, description: string) => ({
   description,
@@ -94,13 +125,37 @@ const routes = {
     method: 'patch',
     path: '/lots/{id}',
     request: { params: IdParam, ...body(LotPatch) },
-    responses: { 200: json(Lot, '已更新'), 404: json(ErrorBody, '找不到批次') },
+    responses: { 200: json(Lot, '已更新'), 404: json(ErrorBody, '找不到批次'), 409: json(ConflictBody, '造成超賣') },
   }),
   deleteLot: createRoute({
     method: 'delete',
     path: '/lots/{id}',
     request: { params: IdParam },
-    responses: { 204: { description: '已刪除' }, 404: json(ErrorBody, '找不到批次') },
+    responses: { 204: { description: '已刪除' }, 404: json(ErrorBody, '找不到批次'), 409: json(ConflictBody, '造成超賣') },
+  }),
+  listSells: createRoute({
+    method: 'get',
+    path: '/sells',
+    request: { query: z.object({ stockId: StockId.optional() }) },
+    responses: { 200: json(z.array(Sell), '賣出紀錄（依日期）') },
+  }),
+  createSell: createRoute({
+    method: 'post',
+    path: '/sells',
+    request: body(SellCreate),
+    responses: { 201: json(Sell, '已建立'), 400: json(ErrorBody, '驗證失敗'), 409: json(ConflictBody, '超賣') },
+  }),
+  updateSell: createRoute({
+    method: 'patch',
+    path: '/sells/{id}',
+    request: { params: IdParam, ...body(SellPatch) },
+    responses: { 200: json(Sell, '已更新'), 404: json(ErrorBody, '找不到賣出紀錄'), 409: json(ConflictBody, '超賣') },
+  }),
+  deleteSell: createRoute({
+    method: 'delete',
+    path: '/sells/{id}',
+    request: { params: IdParam },
+    responses: { 204: { description: '已刪除' }, 404: json(ErrorBody, '找不到賣出紀錄') },
   }),
 }
 
@@ -134,6 +189,27 @@ export function createPortfolioRoutes(db: Db, jwtSecret: string) {
   app.openapi(routes.deleteLot, async (c) => {
     const ok = await repo.deleteLot(c.get('jwtPayload').sub, c.req.valid('param').id)
     return ok ? c.body(null, 204) : c.json({ error: '找不到批次' }, 404)
+  })
+
+  app.openapi(routes.listSells, async (c) => {
+    const { stockId } = c.req.valid('query')
+    return c.json(await repo.listSells(c.get('jwtPayload').sub, stockId), 200)
+  })
+
+  app.openapi(routes.createSell, async (c) => {
+    const input = c.req.valid('json')
+    if (!(await repo.stockExists(input.stockId))) return c.json({ error: `查無股票 ${input.stockId}` }, 400)
+    return c.json(await repo.createSell(c.get('jwtPayload').sub, input), 201)
+  })
+
+  app.openapi(routes.updateSell, async (c) => {
+    const sell = await repo.updateSell(c.get('jwtPayload').sub, c.req.valid('param').id, c.req.valid('json'))
+    return sell ? c.json(sell, 200) : c.json({ error: '找不到賣出紀錄' }, 404)
+  })
+
+  app.openapi(routes.deleteSell, async (c) => {
+    const ok = await repo.deleteSell(c.get('jwtPayload').sub, c.req.valid('param').id)
+    return ok ? c.body(null, 204) : c.json({ error: '找不到賣出紀錄' }, 404)
   })
 
   return app

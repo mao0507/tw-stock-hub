@@ -1,11 +1,14 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { portfolioApi } from '@tw-stock-hub/api-client'
-import type { CreateLotForm, Holding, PortfolioTotals, UpdateLotForm } from '@tw-stock-hub/types'
+import type {
+  ClosedPosition, CreateLotForm, CreateSellForm, Holding, PortfolioTotals, UpdateLotForm, UpdateSellForm,
+} from '@tw-stock-hub/types'
 
 // 持股彙總一律由後端重算；任何批次異動後重新載入，前端不自行推算。
 export const usePortfolioStore = defineStore('portfolio', () => {
   const holdings = ref<Holding[]>([])
+  const closed = ref<ClosedPosition[]>([])
   const totals = ref<PortfolioTotals | null>(null)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
@@ -16,6 +19,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     try {
       const data = await portfolioApi.getHoldings()
       holdings.value = data.items
+      closed.value = data.closed
       totals.value = data.totals
     } catch (e) {
       console.warn('[PortfolioStore] fetchHoldings failed', e)
@@ -40,5 +44,23 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     await fetchHoldings()
   }
 
-  return { holdings, totals, isLoading, error, fetchHoldings, addLot, updateLot, removeLot }
+  async function addSell(form: CreateSellForm): Promise<void> {
+    await portfolioApi.createSell(form)
+    await fetchHoldings()
+  }
+
+  async function updateSell(id: string, form: UpdateSellForm): Promise<void> {
+    await portfolioApi.updateSell(id, form)
+    await fetchHoldings()
+  }
+
+  async function removeSell(id: string): Promise<void> {
+    await portfolioApi.deleteSell(id)
+    await fetchHoldings()
+  }
+
+  return {
+    holdings, closed, totals, isLoading, error,
+    fetchHoldings, addLot, updateLot, removeLot, addSell, updateSell, removeSell,
+  }
 })

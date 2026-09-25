@@ -22,6 +22,13 @@
       "when": 1790308487202,
       "tag": "0002_holdings_cost_basis",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790309790318,
+      "tag": "0003_widen_realized_pnl",
+      "breakpoints": true
     }
   ]
 }
