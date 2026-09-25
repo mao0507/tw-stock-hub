@@ -61,6 +61,11 @@ pnpm --filter @tw-stock-hub/web dev          # :3000，/api 代理到 :3001
 cd crawler && uv run pytest                  # crawler 測試
 cd crawler && uv run python run_job.py twse_daily
 
+# 首次啟動灌資料（容器內執行；TWSE 有頻率限制，勿同時跑多支）
+docker compose exec crawler python scripts/backfill_history.py --from 2026-08-01 --to 2026-09-24  # 行情/法人/融資
+docker compose exec crawler python scripts/backfill_market.py                                     # 大盤/類股/估值（依已有行情日）
+docker compose exec crawler python run_job.py exdividend && docker compose exec crawler python run_job.py dividend
+
 docker compose up -d --build                 # 全部（需先 cp .env.example .env 並填值）
 bash scripts/backup-members.sh               # members 加密備份
 ```
