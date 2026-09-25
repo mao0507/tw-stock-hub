@@ -83,7 +83,11 @@ CREATE TABLE IF NOT EXISTS market_index (
   down_count       INTEGER       NOT NULL,
   flat_count       INTEGER       NOT NULL,
   limit_up_count   INTEGER       NOT NULL,
-  limit_down_count INTEGER       NOT NULL
+  limit_down_count INTEGER       NOT NULL,
+  taiex_open       NUMERIC(12,2),
+  taiex_high       NUMERIC(12,2),
+  taiex_low        NUMERIC(12,2),
+  taiex_prev_close NUMERIC(12,2)
 );
 
 SELECT create_hypertable(
@@ -275,6 +279,7 @@ CREATE INDEX IF NOT EXISTS idx_bs_stock ON balance_sheets(stock_id, year DESC, q
 CREATE TABLE IF NOT EXISTS dividends (
   stock_id VARCHAR(10) NOT NULL, dividend_year VARCHAR(10) NOT NULL, period VARCHAR(10) NOT NULL,
   cash_dividend NUMERIC(10,4), stock_dividend NUMERIC(10,4),
+  ex_dividend_date DATE,
   PRIMARY KEY (stock_id, dividend_year, period));
 CREATE INDEX IF NOT EXISTS idx_div_stock ON dividends(stock_id, dividend_year DESC);
 

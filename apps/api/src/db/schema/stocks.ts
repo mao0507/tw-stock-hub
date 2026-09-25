@@ -1,6 +1,6 @@
 // stocks schema：由 db/init/01-stocks.sql 建立、crawler 寫入。
 // 這裡只宣告 api 會查的表（唯讀映射），不參與 drizzle-kit migration。
-import { bigint, boolean, date, integer, numeric, pgSchema, serial, text, timestamp, varchar } from 'drizzle-orm/pg-core'
+import { bigint, boolean, date, integer, jsonb, numeric, pgSchema, serial, text, timestamp, varchar } from 'drizzle-orm/pg-core'
 
 export const stocksSchema = pgSchema('stocks')
 
@@ -66,4 +66,71 @@ export const shareholderDispersion = stocksSchema.table('shareholder_dispersion'
   bigHolderPct: numeric('big_holder_pct', { precision: 8, scale: 2 }),
   bigHolderCount: integer('big_holder_count'),
   totalHolders: integer('total_holders'),
+})
+
+export const monthlyRevenue = stocksSchema.table('monthly_revenue', {
+  stockId: varchar('stock_id', { length: 10 }).notNull(),
+  yearMonth: varchar('year_month', { length: 6 }).notNull(),
+  revenue: bigint('revenue', { mode: 'number' }),
+  momPct: numeric('mom_pct', { precision: 10, scale: 2 }),
+  yoyPct: numeric('yoy_pct', { precision: 10, scale: 2 }),
+  cumYoyPct: numeric('cum_yoy_pct', { precision: 10, scale: 2 }),
+})
+
+export const financialStatements = stocksSchema.table('financial_statements', {
+  stockId: varchar('stock_id', { length: 10 }).notNull(),
+  year: integer('year').notNull(),
+  quarter: integer('quarter').notNull(),
+  revenue: bigint('revenue', { mode: 'number' }),
+  grossProfit: bigint('gross_profit', { mode: 'number' }),
+  opIncome: bigint('op_income', { mode: 'number' }),
+  pretaxIncome: bigint('pretax_income', { mode: 'number' }),
+  netIncome: bigint('net_income', { mode: 'number' }),
+  eps: numeric('eps', { precision: 8, scale: 2 }),
+  costOfGoodsSold: bigint('cost_of_goods_sold', { mode: 'number' }),
+  opExpenses: bigint('op_expenses', { mode: 'number' }),
+  nonOpIncome: bigint('non_op_income', { mode: 'number' }),
+})
+
+export const balanceSheets = stocksSchema.table('balance_sheets', {
+  stockId: varchar('stock_id', { length: 10 }).notNull(),
+  year: integer('year').notNull(),
+  quarter: integer('quarter').notNull(),
+  totalAssets: bigint('total_assets', { mode: 'number' }),
+  totalEquity: bigint('total_equity', { mode: 'number' }),
+  accountsReceivable: bigint('accounts_receivable', { mode: 'number' }),
+  inventories: bigint('inventories', { mode: 'number' }),
+  contractLiabilities: bigint('contract_liabilities', { mode: 'number' }),
+})
+
+export const dividends = stocksSchema.table('dividends', {
+  stockId: varchar('stock_id', { length: 10 }).notNull(),
+  dividendYear: varchar('dividend_year', { length: 10 }).notNull(),
+  period: varchar('period', { length: 10 }).notNull(),
+  cashDividend: numeric('cash_dividend', { precision: 10, scale: 4 }),
+  stockDividend: numeric('stock_dividend', { precision: 10, scale: 4 }),
+  exDividendDate: date('ex_dividend_date'),
+})
+
+export const valuations = stocksSchema.table('valuations', {
+  date: date('date').notNull(),
+  stockId: varchar('stock_id', { length: 10 }).notNull(),
+  pe: numeric('pe', { precision: 10, scale: 2 }),
+  pb: numeric('pb', { precision: 10, scale: 2 }),
+  dividendYield: numeric('dividend_yield', { precision: 8, scale: 2 }),
+})
+
+export const etfHoldings = stocksSchema.table('etf_holdings', {
+  etfId: varchar('etf_id', { length: 10 }).notNull(),
+  stockId: varchar('stock_id', { length: 10 }).notNull(),
+  stockName: varchar('stock_name', { length: 50 }),
+  weight: numeric('weight', { precision: 6, scale: 2 }),
+  shares: bigint('shares', { mode: 'number' }),
+  updatedDate: date('updated_date'),
+})
+
+export const etfInfo = stocksSchema.table('etf_info', {
+  etfId: varchar('etf_id', { length: 10 }).notNull(),
+  items: jsonb('items'),
+  updatedDate: date('updated_date'),
 })

@@ -11,8 +11,11 @@ from datetime import date
 
 import httpx
 from loguru import logger
+from sqlalchemy import text
 
 from crawlers.base.base_crawler import BaseCrawler
+from crawlers.fundamental.ytd import FIELDS as YTD_FIELDS, to_single_quarter
+from db.connection import get_session
 from pipeline.writer import DataWriter
 from pipeline.notify import publisher
 
@@ -84,6 +87,24 @@ class MonthlyRevenueCrawler(BaseCrawler):
         return count
 
 
+async def _load_prior_quarters(records: list[dict]) -> dict:
+    """讀取這批資料同年度、較早季別的單季值：{stock_id: {(year, quarter): row}}"""
+    years = sorted({r["year"] for r in records if r["quarter"] > 1})
+    if not years:
+        return {}
+    cols = ", ".join(YTD_FIELDS)
+    async with get_session() as session:
+        rows = (await session.execute(
+            text(f"SELECT stock_id, year, quarter, {cols} FROM financial_statements WHERE year = ANY(:years)"),
+            {"years": years},
+        )).mappings().all()
+    prior: dict = {}
+    for row in rows:
+        values = {f: (float(row[f]) if f == "eps" and row[f] is not None else row[f]) for f in YTD_FIELDS}
+        prior.setdefault(row["stock_id"], {})[(row["year"], row["quarter"])] = values
+    return prior
+
+
 class FinancialStatementCrawler(BaseCrawler):
     crawler_name = "FinancialStatementCrawler"
 
@@ -107,7 +128,12 @@ class FinancialStatementCrawler(BaseCrawler):
                 "net_income": _int(r.get("本期淨利（淨損）")),
                 "eps": _num(r.get("基本每股盈餘（元）")),
             })
-        count = await DataWriter.write_financials(records)
+        # OpenAPI 為年初至今累計，換算成單季；前幾季單季資料不齊的筆數略過
+        singles = to_single_quarter(records, await _load_prior_quarters(records))
+        skipped = len(records) - len(singles)
+        if skipped:
+            logger.warning(f"[{self.crawler_name}] {skipped} 筆缺前幾季單季資料，無法由累計換算，略過")
+        count = await DataWriter.write_financials(singles)
         logger.info(f"[{self.crawler_name}] {count} 筆財報")
         return count
 
