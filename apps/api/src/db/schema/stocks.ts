@@ -41,3 +41,29 @@ export const exDividendCalendar = stocksSchema.table('ex_dividend_calendar', {
   stockId: varchar('stock_id', { length: 10 }).notNull(),
   cashDividend: numeric('cash_dividend', { precision: 10, scale: 4 }),
 })
+
+export const institutionalTrading = stocksSchema.table('institutional_trading', {
+  date: date('date').notNull(),
+  stockId: varchar('stock_id', { length: 10 }).notNull(),
+  foreignNet: bigint('foreign_net', { mode: 'number' }).notNull(),
+  trustNet: bigint('trust_net', { mode: 'number' }).notNull(),
+  dealerNet: bigint('dealer_net', { mode: 'number' }).notNull(),
+  totalNet: bigint('total_net', { mode: 'number' }).notNull(),
+})
+
+export const marginTrading = stocksSchema.table('margin_trading', {
+  date: date('date').notNull(),
+  stockId: varchar('stock_id', { length: 10 }).notNull(),
+  marginBalance: bigint('margin_balance', { mode: 'number' }).notNull(),
+  marginChange: bigint('margin_change', { mode: 'number' }).notNull(),
+  shortBalance: bigint('short_balance', { mode: 'number' }).notNull(),
+  shortChange: bigint('short_change', { mode: 'number' }).notNull(),
+})
+
+export const shareholderDispersion = stocksSchema.table('shareholder_dispersion', {
+  date: date('date').notNull(),
+  stockId: varchar('stock_id', { length: 10 }).notNull(),
+  bigHolderPct: numeric('big_holder_pct', { precision: 8, scale: 2 }),
+  bigHolderCount: integer('big_holder_count'),
+  totalHolders: integer('total_holders'),
+})
