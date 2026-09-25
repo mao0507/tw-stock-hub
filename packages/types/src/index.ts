@@ -5,6 +5,7 @@ export type * from './user.types'
 export type * from './news.types'
 export type * from './screener.types'
 export type * from './portfolio.types'
+export type * from './watchlist.types'
 
 export {
   NEWS_SOURCE_LABEL,

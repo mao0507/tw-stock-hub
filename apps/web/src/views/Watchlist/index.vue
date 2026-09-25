@@ -1,107 +1,90 @@
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
+import type { WatchlistGroup, WatchlistItem } from '@tw-stock-hub/types'
+import { AppButton, AppInput, AppModal, EmptyState, LoadingSkeleton, StockPriceTag } from '@tw-stock-hub/ui'
 import { useWatchlistStore } from '@/stores/watchlist.store'
-import { stockApi } from '@tw-stock-hub/api-client'
-import type { WatchlistItem, StockLatestQuote, NewsItem } from '@tw-stock-hub/types'
-import {
-  StockPriceTag, AppButton, AppModal, AppInput,
-  LoadingSkeleton, EmptyState, NewsCard, useStaggerIn,
-} from '@tw-stock-hub/ui'
-import gsap from 'gsap'
-import { Flip } from 'gsap/Flip'
-
-gsap.registerPlugin(Flip)
+import GroupFormModal from './GroupFormModal.vue'
 
 const router = useRouter()
-const watchlistStore = useWatchlistStore()
-const { watchlist, isLoading } = storeToRefs(watchlistStore)
+const store = useWatchlistStore()
+const { groups, watchlist, sections, isLoading } = storeToRefs(store)
 
-const rootEl = ref<HTMLElement>()
-const listEl = ref<HTMLElement>()
-useStaggerIn(rootEl, '.watchlist-card')
+const actionError = ref<string | null>(null)
+const busy = ref(false)
 
-const quotesMap = ref<Record<string, StockLatestQuote>>({})
-const newsMap = ref<Record<string, NewsItem | null>>({})
-const loadingQuotes = ref(false)
+const groupFormOpen = ref(false)
+const editingGroup = ref<WatchlistGroup | null>(null)
+const deleteGroupTarget = ref<WatchlistGroup | null>(null)
 
-const removeTarget = ref<string | null>(null)
-const removeLoading = ref(false)
+const removeTarget = ref<WatchlistItem | null>(null)
+const noteTarget = ref<WatchlistItem | null>(null)
+const noteDraft = ref('')
 
-const editTarget = ref<WatchlistItem | null>(null)
-const editNote = ref('')
-const editLoading = ref(false)
+onMounted(() => { void store.fetchWatchlist() })
 
-onMounted(async () => {
-  await watchlistStore.fetchWatchlist()
-  await loadQuotesAndNews()
-})
-
-async function loadQuotesAndNews(): Promise<void> {
-  if (!watchlist.value.length) return
-  loadingQuotes.value = true
+/** 執行異動並統一處理錯誤與防重複點擊 */
+async function run(action: () => Promise<void>, failMsg: string): Promise<boolean> {
+  if (busy.value) return false
+  busy.value = true
+  actionError.value = null
   try {
-    await Promise.allSettled(
-      watchlist.value.map(async (item) => {
-        const [stock, news] = await Promise.allSettled([
-          stockApi.getStockDetail(item.stockId),
-          stockApi.getStockNews(item.stockId, { limit: 1 }),
-        ])
-        if (stock.status === 'fulfilled') {
-          quotesMap.value = { ...quotesMap.value, [item.stockId]: stock.value }
-        }
-        if (news.status === 'fulfilled' && news.value.items.length > 0) {
-          newsMap.value = { ...newsMap.value, [item.stockId]: news.value.items[0] ?? null }
-        } else {
-          newsMap.value = { ...newsMap.value, [item.stockId]: null }
-        }
-      })
-    )
+    await action()
+    return true
+  } catch (e) {
+    console.warn('[Watchlist] action failed', e)
+    actionError.value = failMsg
+    return false
   } finally {
-    loadingQuotes.value = false
+    busy.value = false
   }
+}
+
+function openCreateGroup(): void {
+  editingGroup.value = null
+  groupFormOpen.value = true
+}
+
+function openEditGroup(g: WatchlistGroup): void {
+  editingGroup.value = g
+  groupFormOpen.value = true
+}
+
+async function submitGroup(form: { name: string; color: string | null }): Promise<void> {
+  if (editingGroup.value) await store.updateGroup(editingGroup.value.id, form)
+  else await store.createGroup(form.name, form.color)
+}
+
+// 對話框在操作完成後才關閉；忙碌中確認鈕為 loading 狀態，不會靜默吞掉點擊
+async function confirmDeleteGroup(): Promise<void> {
+  const g = deleteGroupTarget.value
+  if (!g) return
+  await run(() => store.deleteGroup(g.id), '刪除分組失敗，請稍後再試')
+  deleteGroupTarget.value = null
 }
 
 async function confirmRemove(): Promise<void> {
-  if (!removeTarget.value) return
-  removeLoading.value = true
-  const state = listEl.value
-    ? Flip.getState(listEl.value.querySelectorAll('.watchlist-card'))
-    : null
-  try {
-    const id = removeTarget.value
-    await watchlistStore.remove(id)
-    const { [id]: _q, ...restQ } = quotesMap.value
-    const { [id]: _n, ...restN } = newsMap.value
-    quotesMap.value = restQ
-    newsMap.value = restN
-    removeTarget.value = null
-    await nextTick()
-    if (state) Flip.from(state, { duration: 0.4, ease: 'power2.inOut', absolute: true })
-  } catch {
-    alert('移除失敗，請稍後再試')
-  } finally {
-    removeLoading.value = false
-  }
+  const item = removeTarget.value
+  if (!item) return
+  await run(() => store.remove(item.stockId), '移除失敗，請稍後再試')
+  removeTarget.value = null
 }
 
-function openEdit(item: WatchlistItem): void {
-  editTarget.value = item
-  editNote.value = item.note ?? ''
+function openNote(item: WatchlistItem): void {
+  noteTarget.value = item
+  noteDraft.value = item.note ?? ''
 }
 
 async function saveNote(): Promise<void> {
-  if (!editTarget.value) return
-  editLoading.value = true
-  try {
-    await watchlistStore.updateNote(editTarget.value.stockId, editNote.value || null)
-    editTarget.value = null
-  } catch {
-    alert('儲存失敗，請稍後再試')
-  } finally {
-    editLoading.value = false
-  }
+  const item = noteTarget.value
+  if (!item) return
+  const ok = await run(() => store.updateNote(item.stockId, noteDraft.value.trim() || null), '備註儲存失敗')
+  if (ok) noteTarget.value = null
+}
+
+function onMoveToGroup(item: WatchlistItem, value: string): void {
+  void run(() => store.moveToGroup(item.stockId, value || null), '移動分組失敗')
 }
 
 function goToStock(id: string): void {
@@ -110,142 +93,245 @@ function goToStock(id: string): void {
 </script>
 
 <template>
-  <div
-    ref="rootEl"
-    class="space-y-6"
-  >
+  <div class="space-y-6">
     <header class="page-head">
       <div>
-        <h1 class="page-head-title">自選股</h1>
-        <div class="page-head-sub">WATCHLIST</div>
+        <h1 class="page-head-title">
+          自選股
+        </h1>
+        <div class="page-head-sub">
+          WATCHLIST
+        </div>
       </div>
-      <div class="page-head-meta">{{ watchlist.length }} 支追蹤中</div>
+      <div class="flex items-center gap-3">
+        <span class="page-head-meta">{{ watchlist.length }} 支追蹤中</span>
+        <AppButton
+          size="sm"
+          variant="outline"
+          @click="openCreateGroup"
+        >
+          新增分組
+        </AppButton>
+      </div>
     </header>
 
     <div
-      v-if="isLoading"
+      v-if="actionError"
+      role="alert"
+      class="rounded-lg bg-red-50 p-3 text-sm text-red-600"
+    >
+      {{ actionError }}
+    </div>
+
+    <div
+      v-if="isLoading && !watchlist.length && !groups.length"
       class="space-y-3"
     >
       <LoadingSkeleton
-        v-for="i in 4"
+        v-for="i in 3"
         :key="i"
         type="card"
       />
     </div>
 
     <EmptyState
-      v-else-if="!isLoading && watchlist.length === 0"
+      v-else-if="!watchlist.length && !groups.length"
       title="還沒有追蹤任何股票"
-      description="在個股頁點擊「加入自選」開始追蹤"
+      description="在個股頁點擊「加入自選」開始追蹤，也可以先建立分組"
       icon="star"
-    >
-      <template #action>
-        <AppButton
-          variant="outline"
-          size="sm"
-          @click="void router.push('/')"
-        >
-          前往探索
-        </AppButton>
-      </template>
-    </EmptyState>
+    />
 
-    <div
+    <section
+      v-for="(section, sIdx) in sections"
       v-else
-      ref="listEl"
-      class="space-y-4"
+      :key="section.group?.id ?? 'ungrouped'"
+      class="card p-0"
     >
-      <div
-        v-for="item in watchlist"
-        :key="item.stockId"
-        class="watchlist-card card p-0 transition-shadow hover:shadow-md"
+      <div class="flex items-center gap-2 border-b border-gray-100 px-4 py-3">
+        <span
+          class="h-3 w-3 rounded-full"
+          :style="{ backgroundColor: section.group?.color ?? '#d1d5db' }"
+          aria-hidden="true"
+        />
+        <h2 class="font-semibold text-gray-800">
+          {{ section.group?.name ?? '未分組' }}
+        </h2>
+        <span class="text-xs text-gray-400">{{ section.items.length }} 支</span>
+        <div
+          v-if="section.group"
+          class="ml-auto flex items-center gap-1"
+        >
+          <AppButton
+            size="sm"
+            variant="ghost"
+            :disabled="sIdx === 0 || busy"
+            aria-label="分組上移"
+            @click="run(() => store.moveGroup(section.group!.id, -1), '調整順序失敗')"
+          >
+            ↑
+          </AppButton>
+          <AppButton
+            size="sm"
+            variant="ghost"
+            :disabled="sIdx === groups.length - 1 || busy"
+            aria-label="分組下移"
+            @click="run(() => store.moveGroup(section.group!.id, 1), '調整順序失敗')"
+          >
+            ↓
+          </AppButton>
+          <AppButton
+            size="sm"
+            variant="ghost"
+            @click="openEditGroup(section.group)"
+          >
+            編輯
+          </AppButton>
+          <AppButton
+            size="sm"
+            variant="ghost"
+            class="text-red-500"
+            :disabled="busy"
+            @click="deleteGroupTarget = section.group"
+          >
+            刪除
+          </AppButton>
+        </div>
+      </div>
+
+      <p
+        v-if="!section.items.length"
+        class="px-4 py-4 text-xs text-gray-400"
       >
-        <div class="flex items-center gap-3 border-b border-gray-50 p-4">
-          <div
-            class="flex cursor-pointer items-center gap-2 flex-1"
+        這個分組還沒有股票，可從其他分組移入
+      </p>
+
+      <ul class="divide-y divide-gray-50">
+        <li
+          v-for="(item, iIdx) in section.items"
+          :key="item.stockId"
+          class="flex flex-wrap items-center gap-3 px-4 py-3"
+        >
+          <button
+            type="button"
+            class="flex min-w-[8rem] flex-1 items-center gap-2 text-left"
             @click="goToStock(item.stockId)"
           >
             <span class="font-mono text-sm font-bold text-blue-600 hover:underline">{{ item.stockId }}</span>
-            <span class="font-medium text-gray-800">{{ quotesMap[item.stockId]?.name ?? '載入中…' }}</span>
-          </div>
+            <span class="font-medium text-gray-800">{{ item.name }}</span>
+          </button>
 
-          <div class="text-right">
-            <LoadingSkeleton
-              v-if="loadingQuotes && !quotesMap[item.stockId]"
-              type="text"
-              :rows="1"
-            />
-            <StockPriceTag
-              v-else-if="quotesMap[item.stockId]?.latestQuote"
-              :price="quotesMap[item.stockId]!.latestQuote!.close"
-              :change-pct="quotesMap[item.stockId]!.latestQuote!.changePct"
-              size="sm"
-            />
-          </div>
-
-          <div class="flex items-center gap-2 ml-2">
-            <button
-              class="rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-              title="編輯備註"
-              @click="openEdit(item)"
-            >
-              <svg
-                class="h-4 w-4"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              ><path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5z" /></svg>
-            </button>
-            <button
-              class="rounded-md p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500"
-              title="移除"
-              @click="removeTarget = item.stockId"
-            >
-              <svg
-                class="h-4 w-4"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              ><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0l-1 14a2 2 0 01-2 2H7a2 2 0 01-2-2L4 6h16z" /></svg>
-            </button>
-          </div>
-        </div>
-
-        <div
-          v-if="item.note"
-          class="border-b border-gray-50 px-4 py-2"
-        >
-          <span class="text-xs text-gray-400">備註：</span>
-          <span class="text-xs text-gray-600">{{ item.note }}</span>
-        </div>
-
-        <div class="px-2">
-          <LoadingSkeleton
-            v-if="loadingQuotes && !(item.stockId in newsMap)"
-            type="list"
-            :rows="1"
+          <StockPriceTag
+            v-if="item.close !== null"
+            :price="item.close"
+            :change-pct="item.changePct"
+            size="sm"
           />
-          <NewsCard
-            v-else-if="newsMap[item.stockId]"
-            :news="newsMap[item.stockId]!"
-          />
-          <p
+          <span
             v-else
-            class="px-2 py-3 text-xs text-gray-300"
-          >
-            暫無相關新聞
-          </p>
-        </div>
-      </div>
-    </div>
+            class="text-xs text-gray-400"
+          >無行情</span>
 
-    <!-- 移除確認 Modal -->
+          <select
+            class="input-field h-8 w-28 py-0 text-xs"
+            :value="item.groupId ?? ''"
+            aria-label="移動到分組"
+            :disabled="busy"
+            @change="onMoveToGroup(item, ($event.target as HTMLSelectElement).value)"
+          >
+            <option value="">
+              未分組
+            </option>
+            <option
+              v-for="g in groups"
+              :key="g.id"
+              :value="g.id"
+            >
+              {{ g.name }}
+            </option>
+          </select>
+
+          <div class="flex items-center gap-1">
+            <AppButton
+              size="sm"
+              variant="ghost"
+              :disabled="iIdx === 0 || busy"
+              aria-label="上移"
+              @click="run(() => store.moveItem(item.stockId, -1), '調整順序失敗')"
+            >
+              ↑
+            </AppButton>
+            <AppButton
+              size="sm"
+              variant="ghost"
+              :disabled="iIdx === section.items.length - 1 || busy"
+              aria-label="下移"
+              @click="run(() => store.moveItem(item.stockId, 1), '調整順序失敗')"
+            >
+              ↓
+            </AppButton>
+            <AppButton
+              size="sm"
+              variant="ghost"
+              @click="openNote(item)"
+            >
+              備註
+            </AppButton>
+            <AppButton
+              size="sm"
+              variant="ghost"
+              class="text-red-500"
+              :disabled="busy"
+              @click="removeTarget = item"
+            >
+              移除
+            </AppButton>
+          </div>
+
+          <p
+            v-if="item.note"
+            class="w-full text-xs text-gray-500"
+          >
+            備註：{{ item.note }}
+          </p>
+        </li>
+      </ul>
+    </section>
+
+    <GroupFormModal
+      :open="groupFormOpen"
+      :group="editingGroup"
+      :submit="submitGroup"
+      @close="groupFormOpen = false"
+    />
+
+    <AppModal
+      :open="!!deleteGroupTarget"
+      title="刪除分組"
+      size="sm"
+      @close="deleteGroupTarget = null"
+    >
+      <p class="text-sm text-gray-600">
+        確定刪除「{{ deleteGroupTarget?.name }}」？組內股票會移到「未分組」，不會被移除。
+      </p>
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <AppButton
+            variant="ghost"
+            @click="deleteGroupTarget = null"
+          >
+            取消
+          </AppButton>
+          <AppButton
+            variant="destructive"
+            :loading="busy"
+            @click="confirmDeleteGroup"
+          >
+            刪除分組
+          </AppButton>
+        </div>
+      </template>
+    </AppModal>
+
     <AppModal
       :open="!!removeTarget"
       title="確認移除"
@@ -254,7 +340,7 @@ function goToStock(id: string): void {
     >
       <p class="text-sm text-gray-600">
         確定要從自選股中移除
-        <strong class="font-mono text-gray-900">{{ removeTarget }}</strong> 嗎？
+        <strong class="font-mono text-gray-900">{{ removeTarget?.stockId }} {{ removeTarget?.name }}</strong>？
       </p>
       <template #footer>
         <div class="flex justify-end gap-2">
@@ -266,7 +352,7 @@ function goToStock(id: string): void {
           </AppButton>
           <AppButton
             variant="destructive"
-            :loading="removeLoading"
+            :loading="busy"
             @click="confirmRemove"
           >
             確認移除
@@ -275,33 +361,27 @@ function goToStock(id: string): void {
       </template>
     </AppModal>
 
-    <!-- 備註編輯 Modal -->
     <AppModal
-      :open="!!editTarget"
+      :open="!!noteTarget"
       title="編輯備註"
       size="sm"
-      @close="editTarget = null"
+      @close="noteTarget = null"
     >
-      <div class="space-y-3">
-        <p class="text-xs text-gray-400">
-          {{ editTarget?.stockId }} 的備註（最多 200 字）
-        </p>
-        <AppInput
-          v-model="editNote"
-          placeholder="輸入備註，例：長期持有"
-          :label="''"
-        />
-      </div>
+      <AppInput
+        v-model="noteDraft"
+        :label="`${noteTarget?.stockId ?? ''} 的備註（最多 200 字）`"
+        placeholder="例：長期持有、等回檔"
+      />
       <template #footer>
         <div class="flex justify-end gap-2">
           <AppButton
             variant="ghost"
-            @click="editTarget = null"
+            @click="noteTarget = null"
           >
             取消
           </AppButton>
           <AppButton
-            :loading="editLoading"
+            :loading="busy"
             @click="saveNote"
           >
             儲存

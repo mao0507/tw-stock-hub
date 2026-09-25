@@ -6,77 +6,105 @@ vi.mock('@tw-stock-hub/api-client', () => ({
     getWatchlist: vi.fn(),
     addToWatchlist: vi.fn(),
     removeFromWatchlist: vi.fn(),
-    updateWatchlistNote: vi.fn(),
+    updateItem: vi.fn(),
+    reorderItems: vi.fn(),
+    reorderGroups: vi.fn(),
+    createGroup: vi.fn(),
+    updateGroup: vi.fn(),
+    deleteGroup: vi.fn(),
   },
 }))
 
 import { watchlistApi } from '@tw-stock-hub/api-client'
 
-describe('useWatchlistStore', () => {
+const item = (stockId: string, groupId: string | null, sortOrder: number) => ({
+  id: `w-${stockId}`, stockId, name: stockId, groupId, note: null, sortOrder,
+  addedAt: '2026-01-01', close: null, change: null, changePct: null, priceDate: null,
+})
+const group = (id: string, sortOrder: number) => ({ id, name: id, color: null, sortOrder })
+
+function seed(store: ReturnType<typeof useWatchlistStore>) {
+  store.groups = [group('g1', 0), group('g2', 1)]
+  store.watchlist = [item('2330', 'g1', 0), item('0056', 'g1', 1), item('2317', null, 0)]
+}
+
+describe('useWatchlistStore（分組）', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
+    vi.mocked(watchlistApi.getWatchlist).mockResolvedValue({ groups: [], items: [] })
   })
 
-  it('fetchWatchlist 載入清單', async () => {
-    vi.mocked(watchlistApi.getWatchlist).mockResolvedValue([
-      { id: 'w1', stockId: '2330', note: null, addedAt: '2024-01-01' },
-    ] as never)
-
+  it('fetchWatchlist 載入分組與自選股', async () => {
+    vi.mocked(watchlistApi.getWatchlist).mockResolvedValue({ groups: [group('g1', 0)], items: [item('2330', 'g1', 0)] })
     const store = useWatchlistStore()
     await store.fetchWatchlist()
-
+    expect(store.groups).toHaveLength(1)
     expect(store.watchlist).toHaveLength(1)
     expect(store.isLoading).toBe(false)
   })
 
   it('fetchWatchlist 失敗時不丟錯，清單維持空', async () => {
     vi.mocked(watchlistApi.getWatchlist).mockRejectedValue(new Error('boom'))
-
     const store = useWatchlistStore()
     await store.fetchWatchlist()
-
     expect(store.watchlist).toEqual([])
   })
 
-  it('add 將新項目插入清單最前面', async () => {
-    vi.mocked(watchlistApi.addToWatchlist).mockResolvedValue(
-      { id: 'w2', stockId: '2317', note: null, addedAt: '2024-01-02' } as never,
-    )
-
+  it('sections：依分組順序分段，未分組放最後', () => {
     const store = useWatchlistStore()
-    await store.add('2317')
-
-    expect(store.watchlist[0]!.stockId).toBe('2317')
+    seed(store)
+    expect(store.sections.map((s) => [s.group?.id ?? null, s.items.map((i) => i.stockId)])).toEqual([
+      ['g1', ['2330', '0056']],
+      ['g2', []],
+      [null, ['2317']],
+    ])
   })
 
-  it('add 失敗時往外拋並不修改清單', async () => {
+  it('isWatched 判斷是否已在自選', () => {
+    const store = useWatchlistStore()
+    seed(store)
+    expect(store.isWatched('2330')).toBe(true)
+    expect(store.isWatched('9999')).toBe(false)
+  })
+
+  it('add 失敗時往外拋', async () => {
     vi.mocked(watchlistApi.addToWatchlist).mockRejectedValue(new Error('conflict'))
-
-    const store = useWatchlistStore()
-    await expect(store.add('2317')).rejects.toThrow('conflict')
-    expect(store.watchlist).toEqual([])
+    await expect(useWatchlistStore().add('2317')).rejects.toThrow('conflict')
   })
 
-  it('remove 從清單移除指定股票', async () => {
-    vi.mocked(watchlistApi.removeFromWatchlist).mockResolvedValue(undefined as never)
-
+  it('moveItem 往上：整組新順序一次送出', async () => {
     const store = useWatchlistStore()
-    store.watchlist.push({ id: 'w1', stockId: '2330', note: null, addedAt: '2024-01-01' } as never)
-    await store.remove('2330')
-
-    expect(store.watchlist).toEqual([])
+    seed(store)
+    await store.moveItem('0056', -1)
+    expect(watchlistApi.reorderItems).toHaveBeenCalledWith('g1', ['0056', '2330'])
   })
 
-  it('updateNote 更新指定項目的備註', async () => {
-    vi.mocked(watchlistApi.updateWatchlistNote).mockResolvedValue(
-      { id: 'w1', stockId: '2330', note: '新筆記', addedAt: '2024-01-01' } as never,
-    )
-
+  it('moveItem 已在最前面時不呼叫 API', async () => {
     const store = useWatchlistStore()
-    store.watchlist.push({ id: 'w1', stockId: '2330', note: null, addedAt: '2024-01-01' } as never)
-    await store.updateNote('2330', '新筆記')
+    seed(store)
+    await store.moveItem('2330', -1)
+    expect(watchlistApi.reorderItems).not.toHaveBeenCalled()
+  })
 
-    expect(store.watchlist[0]!.note).toBe('新筆記')
+  it('moveItem 在 sortOrder 相同時仍依畫面順序交換', async () => {
+    const store = useWatchlistStore()
+    store.watchlist = [item('A', null, 1), item('B', null, 1), item('C', null, 2)]
+    await store.moveItem('B', -1)
+    expect(watchlistApi.reorderItems).toHaveBeenCalledWith(null, ['B', 'A', 'C'])
+  })
+
+  it('moveGroup 往下：所有分組新順序一次送出', async () => {
+    const store = useWatchlistStore()
+    seed(store)
+    await store.moveGroup('g1', 1)
+    expect(watchlistApi.reorderGroups).toHaveBeenCalledWith(['g2', 'g1'])
+  })
+
+  it('異動後重新載入（伺服器為準）', async () => {
+    const store = useWatchlistStore()
+    await store.moveToGroup('2330', 'g2')
+    expect(watchlistApi.updateItem).toHaveBeenCalledWith('2330', { groupId: 'g2' })
+    expect(watchlistApi.getWatchlist).toHaveBeenCalledTimes(1)
   })
 })

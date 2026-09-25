@@ -3,6 +3,7 @@ import type { Db } from '../../db/client.js'
 import { type AuthEnv, requireAuth } from '../../middleware/auth.js'
 import { createPortfolioRepository, MAX_PRICE, MAX_TOTAL_SHARES } from './repository.js'
 import { summarize } from './summary.js'
+import { createWatchlistRoutes } from './watchlist.routes.js'
 
 import { todayInTaipei } from './dates.js'
 
@@ -187,6 +188,7 @@ export function createPortfolioRoutes(db: Db, jwtSecret: string) {
   const repo = createPortfolioRepository(db)
 
   app.use('*', requireAuth(jwtSecret))
+  app.route('/', createWatchlistRoutes(db))
 
   app.openapi(routes.holdings, async (c) => {
     const rows = await repo.holdingsWithPrice(c.get('jwtPayload').sub)

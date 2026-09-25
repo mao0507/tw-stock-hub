@@ -6,17 +6,6 @@ export interface User {
   avatarUrl: string | null
 }
 
-export interface WatchlistItem {
-  id: string
-  stockId: string
-  note: string | null
-  addedAt: string
-}
-
-export interface AddWatchlistForm {
-  stockId: string
-  note?: string
-}
 
 export type AlertType = 'price_above' | 'price_below' | 'volume_above'
 

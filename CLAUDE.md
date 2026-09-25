@@ -36,11 +36,11 @@ configs/        eslint / tailwind / tsconfig 共用設定
 
 ### Phase 1 待辦
 
-- [ ] portfolio 模組：自選分組 CRUD（#10）；買入/賣出/重算/P&L/除息日股利已完成（#11–#13）
+- [x] portfolio 模組：自選分組（#10）、買入/賣出/重算/P&L/除息日股利（#11–#13）
 - [ ] stock 模組：搬 web 目前用到的行情/法人/融資 API（參考 `../taiwan-stock-platform/apps/stock-api-service`）
 - [ ] admin 模組：搬爬蟲監控、資料健康檢查 API（admin 前端目前打的是舊路由）
 - [x] `packages/api-client`：單一 `apiClient`、純 cookie，401 導向 `/api/auth/google`（#3）
-- [x] web `/portfolio` 頁面：持股總覽、買賣紀錄、已出清、股利明細（#11–#13）：持股總覽、買入批次 CRUD 已完成（#11），賣出與股利待 #12、#13
+- [x] web `/portfolio` 頁面：持股總覽、買賣紀錄、已出清、股利明細（#11–#13）
 - [ ] `crawler/monitor/alert.py` 的連續失敗計數存在記憶體，一次性任務下永遠歸零；改成查 `crawler_logs` 最近 N 筆
 
 ## 上線前必做（目前只在本機跑）
