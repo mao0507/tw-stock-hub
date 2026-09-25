@@ -66,24 +66,37 @@ async def test_run_with_retry_raises_after_exhausting_attempts():
         await crawler._run_with_retry()
 
 
-async def test_run_records_success(monkeypatch):
+def _capture_failures(monkeypatch):
     recorded = []
-    monkeypatch.setattr(
-        "crawlers.base.base_crawler.alert_manager.record_success",
-        lambda name: recorded.append(name),
-    )
-    crawler = AlwaysSucceeds()
-    await crawler.run()
-    assert recorded == ["always-succeeds"]
+
+    async def fake(name, error):
+        recorded.append((name, error))
+
+    monkeypatch.setattr("crawlers.base.base_crawler.alert_manager.record_failure", fake)
+    return recorded
+
+
+async def test_run_success_does_not_check_alert(monkeypatch):
+    recorded = _capture_failures(monkeypatch)
+    await AlwaysSucceeds().run()
+    assert recorded == []
 
 
 async def test_run_records_failure_and_reraises(monkeypatch):
-    recorded = []
-    monkeypatch.setattr(
-        "crawlers.base.base_crawler.alert_manager.record_failure",
-        lambda name, error: recorded.append((name, error)),
-    )
+    recorded = _capture_failures(monkeypatch)
     crawler = AlwaysFails()
     with pytest.raises(RuntimeError):
         await crawler.run()
+    assert recorded[0][0] == "always-fails"
+
+
+async def test_log_write_failure_keeps_original_error(monkeypatch):
+    recorded = _capture_failures(monkeypatch)
+
+    async def broken_log(*args, **kwargs):
+        raise ConnectionError("db down")
+
+    monkeypatch.setattr("crawlers.base.base_crawler.write_crawler_log", broken_log)
+    with pytest.raises(RuntimeError, match="permanent error"):
+        await AlwaysFails().run()
     assert recorded[0][0] == "always-fails"

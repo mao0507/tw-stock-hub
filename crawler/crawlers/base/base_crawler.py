@@ -51,23 +51,27 @@ class BaseCrawler(ABC):
                     records_count=count,
                     duration_ms=duration_ms,
                 )
-            alert_manager.record_success(self.crawler_name)
             logger.success(f"[{self.crawler_name}] Done. {count} records in {duration_ms}ms")
             return count
 
         except Exception as e:
             duration_ms = int((time.monotonic() - start_time) * 1000)
             logger.error(f"[{self.crawler_name}] Failed: {e}")
-            alert_manager.record_failure(self.crawler_name, str(e))
 
-            async with get_session() as session:
-                await write_crawler_log(
-                    session,
-                    crawler_name=self.crawler_name,
-                    status="failed",
-                    error_message=str(e)[:1000],
-                    duration_ms=duration_ms,
-                )
+            try:
+                async with get_session() as session:
+                    await write_crawler_log(
+                        session,
+                        crawler_name=self.crawler_name,
+                        status="failed",
+                        error_message=str(e)[:1000],
+                        duration_ms=duration_ms,
+                    )
+            except Exception as log_error:
+                # 寫紀錄失敗（例如 DB 掛掉）不可蓋掉爬蟲原本的錯誤
+                logger.error(f"[{self.crawler_name}] 寫入失敗紀錄時出錯: {log_error}")
+            # 失敗紀錄寫入後才檢查，連續失敗次數以 crawler_logs 為準（讀取失敗時 record_failure 會自行略過）
+            await alert_manager.record_failure(self.crawler_name, str(e))
             raise
 
     async def _run_with_retry(self) -> int:

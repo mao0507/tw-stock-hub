@@ -1,30 +1,63 @@
 import smtplib
-from collections import defaultdict
+from collections.abc import Awaitable, Callable
 from email.message import EmailMessage
 
 import httpx
 from loguru import logger
+from sqlalchemy import text
 
 from config import settings
+from db.connection import get_session
+
+
+StatusLoader = Callable[[str, int], Awaitable[list[str]]]
+
+
+def consecutive_failures(recent_statuses: list[str]) -> int:
+    """最近幾次執行結果（新到舊）中，開頭連續失敗的次數。"""
+    count = 0
+    for status in recent_statuses:
+        if status != "failed":
+            break
+        count += 1
+    return count
+
+
+async def _load_recent_statuses(crawler_name: str, limit: int) -> list[str]:
+    async with get_session() as session:
+        rows = await session.execute(
+            text("""
+                SELECT status FROM crawler_logs
+                WHERE crawler_name = :name
+                ORDER BY run_at DESC, id DESC
+                LIMIT :limit
+            """),
+            {"name": crawler_name, "limit": limit},
+        )
+        return [str(r[0]) for r in rows]
 
 
 class AlertManager:
-    def __init__(self, threshold: int = 3) -> None:
-        self._fail_counts: dict[str, int] = defaultdict(int)
-        self._alerted: set[str] = set()
+    """連續失敗告警。計數來自 crawler_logs（一次性任務沒有常駐記憶體可存計數）。
+
+    剛好達到門檻時告警一次；之後同一段連續失敗不再重複告警，成功一次即重新計數。
+    """
+
+    def __init__(self, threshold: int = 3, load_recent_statuses: StatusLoader = _load_recent_statuses) -> None:
         self._threshold = threshold
+        self._load = load_recent_statuses
 
-    def record_success(self, crawler_name: str) -> None:
-        self._fail_counts[crawler_name] = 0
-        self._alerted.discard(crawler_name)
-
-    def record_failure(self, crawler_name: str, error: str) -> None:
-        self._fail_counts[crawler_name] += 1
-        count = self._fail_counts[crawler_name]
+    async def record_failure(self, crawler_name: str, error: str) -> None:
+        """在本次失敗寫入 crawler_logs 之後呼叫。"""
+        try:
+            # 多取一筆才能分辨「剛好達門檻」與「早已超過門檻」
+            statuses = await self._load(crawler_name, self._threshold + 1)
+        except Exception as e:
+            logger.error(f"[Alert] 讀取 {crawler_name} 執行紀錄失敗，略過告警檢查: {e}")
+            return
+        count = consecutive_failures(statuses)
         logger.warning(f"[Alert] {crawler_name} fail count={count}/{self._threshold}")
-
-        if count >= self._threshold and crawler_name not in self._alerted:
-            self._alerted.add(crawler_name)
+        if count == self._threshold:
             self._trigger_alert(crawler_name, error, count)
 
     def _trigger_alert(self, crawler_name: str, error: str, count: int) -> None:
@@ -65,4 +98,4 @@ class AlertManager:
             logger.error(f"[Alert] Slack failed: {e}")
 
 
-alert_manager = AlertManager()
+alert_manager = AlertManager(threshold=settings.alert_fail_threshold)

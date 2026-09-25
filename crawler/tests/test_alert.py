@@ -1,33 +1,60 @@
-from monitor.alert import AlertManager
+from monitor.alert import AlertManager, consecutive_failures
 
 
-def test_record_success_resets_count():
-    manager = AlertManager(threshold=3)
-    manager.record_failure("twse_daily", "boom")
-    manager.record_success("twse_daily")
-    assert manager._fail_counts["twse_daily"] == 0
-
-
-def test_record_failure_triggers_alert_at_threshold(monkeypatch):
-    manager = AlertManager(threshold=2)
+def make(threshold, statuses):
+    """statuses：該爬蟲最近的執行結果（新到舊，已含本次失敗）"""
+    async def load(_name, _limit):
+        return statuses
+    manager = AlertManager(threshold=threshold, load_recent_statuses=load)
     triggered = []
-    monkeypatch.setattr(manager, "_trigger_alert", lambda name, error, count: triggered.append((name, count)))
+    manager._trigger_alert = lambda name, error, count: triggered.append((name, count))
+    return manager, triggered
 
-    manager.record_failure("twse_daily", "boom")
+
+def test_consecutive_failures_counts_leading_failed():
+    assert consecutive_failures(["failed", "failed", "success", "failed"]) == 2
+    assert consecutive_failures(["success", "failed"]) == 0
+    assert consecutive_failures([]) == 0
+
+
+async def test_below_threshold_does_not_alert():
+    manager, triggered = make(3, ["failed", "failed", "success"])
+    await manager.record_failure("twse_daily", "boom")
     assert triggered == []
 
-    manager.record_failure("twse_daily", "boom again")
-    assert triggered == [("twse_daily", 2)]
+
+async def test_alerts_when_reaching_threshold_exactly():
+    manager, triggered = make(3, ["failed", "failed", "failed", "success"])
+    await manager.record_failure("twse_daily", "boom")
+    assert triggered == [("twse_daily", 3)]
 
 
-def test_record_failure_only_alerts_once_per_incident(monkeypatch):
-    manager = AlertManager(threshold=1)
-    triggered = []
-    monkeypatch.setattr(manager, "_trigger_alert", lambda name, error, count: triggered.append(count))
+async def test_does_not_repeat_after_threshold_in_same_incident():
+    # 已連續失敗 4 次：第 3 次時已告警過
+    manager, triggered = make(3, ["failed", "failed", "failed", "failed"])
+    await manager.record_failure("twse_daily", "boom")
+    assert triggered == []
 
-    manager.record_failure("twse_daily", "boom")
-    manager.record_failure("twse_daily", "boom")
-    assert triggered == [1]
+
+async def test_counter_resets_after_success():
+    manager, triggered = make(2, ["failed", "success", "failed", "failed"])
+    await manager.record_failure("twse_daily", "boom")
+    assert triggered == []
+
+
+async def test_works_across_processes_without_memory():
+    # 一次性任務：每次都是新的 AlertManager，計數完全來自 crawler_logs
+    for statuses, expected in [(["failed"], []), (["failed", "failed"], [("x", 2)])]:
+        manager, triggered = make(2, statuses)
+        await manager.record_failure("x", "boom")
+        assert triggered == expected
+
+
+async def test_load_failure_does_not_raise():
+    async def broken(_name, _limit):
+        raise RuntimeError("db down")
+    manager = AlertManager(threshold=1, load_recent_statuses=broken)
+    await manager.record_failure("x", "boom")  # 告警檢查失敗不能讓爬蟲任務再多一個例外
 
 
 def test_send_email_skipped_without_alert_email(monkeypatch):

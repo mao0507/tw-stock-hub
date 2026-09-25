@@ -41,7 +41,7 @@ configs/        eslint / tailwind / tsconfig 共用設定
 - [ ] admin 模組：搬爬蟲監控、資料健康檢查 API（admin 前端目前打的是舊路由）
 - [x] `packages/api-client`：單一 `apiClient`、純 cookie，401 導向 `/api/auth/google`（#3）
 - [x] web `/portfolio` 頁面：持股總覽、買賣紀錄、已出清、股利明細（#11–#13）
-- [ ] `crawler/monitor/alert.py` 的連續失敗計數存在記憶體，一次性任務下永遠歸零；改成查 `crawler_logs` 最近 N 筆
+- [x] 爬蟲連續失敗告警改由 `crawler_logs` 計算（#16）
 
 ## 上線前必做（目前只在本機跑）
 
