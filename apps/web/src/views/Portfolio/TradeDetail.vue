@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { portfolioApi } from '@tw-stock-hub/api-client'
-import type { HoldingLot, SellTransaction } from '@tw-stock-hub/types'
+import type { DividendEntitlement, HoldingLot, SellTransaction } from '@tw-stock-hub/types'
 import { AppButton } from '@tw-stock-hub/ui'
 import { money, pnlClass } from './format'
 
-// 單一股票的交易明細（買入批次 + 賣出紀錄）。持股列與已出清列共用。
+// 單一股票的交易明細（買入批次 + 賣出紀錄 + 股利權利）。持股列與已出清列共用。
 interface Props {
   stockId: string
   /** 父層在任何異動後遞增，觸發重新載入 */
@@ -22,6 +22,7 @@ const emit = defineEmits<{
 
 const lots = ref<HoldingLot[]>([])
 const sells = ref<SellTransaction[]>([])
+const dividends = ref<DividendEntitlement[]>([])
 const loading = ref(false)
 const loadError = ref<string | null>(null)
 
@@ -34,11 +35,16 @@ async function load(): Promise<void> {
   loading.value = true
   loadError.value = null
   try {
-    const [l, s] = await Promise.all([portfolioApi.listLots(props.stockId), portfolioApi.listSells(props.stockId)])
+    const [l, s, d] = await Promise.all([
+      portfolioApi.listLots(props.stockId),
+      portfolioApi.listSells(props.stockId),
+      portfolioApi.listDividends(props.stockId),
+    ])
     // 只採用最新一次請求的結果，避免舊回應覆蓋
     if (unmounted || id !== requestId) return
     lots.value = l
     sells.value = s
+    dividends.value = d
   } catch (e) {
     if (unmounted || id !== requestId) return
     console.warn('[TradeDetail] load failed', e)
@@ -207,6 +213,55 @@ watch(() => [props.stockId, props.reloadToken], () => { void load() }, { immedia
           </tr>
         </tbody>
       </table>
+
+      <table
+        v-if="dividends.length"
+        class="w-full text-xs"
+      >
+        <caption class="pb-1 text-left font-semibold text-gray-500">
+          股利（依除息日持股）
+        </caption>
+        <thead class="text-left text-gray-400">
+          <tr>
+            <th class="py-1 pr-3">
+              除息日
+            </th>
+            <th class="py-1 pr-3 text-right">
+              每股現金股利
+            </th>
+            <th class="py-1 pr-3 text-right">
+              應領股數
+            </th>
+            <th class="py-1 text-right">
+              金額
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="d in dividends"
+            :key="d.exDate"
+            class="border-t border-gray-200"
+          >
+            <td class="py-1.5 pr-3 font-mono">
+              {{ d.exDate }}
+            </td>
+            <td class="py-1.5 pr-3 text-right font-mono">
+              {{ money(d.cashPerShare, 4) }}
+            </td>
+            <td class="py-1.5 pr-3 text-right font-mono">
+              {{ money(d.shares) }}
+            </td>
+            <td class="py-1.5 text-right font-mono text-up">
+              {{ money(d.amount, 2) }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p class="text-[11px] text-gray-400">
+        只計現金股利。配股、減資、分割會改變股數，請以成交價 0 的買入批次手動記錄。
+      </p>
     </template>
   </div>
 </template>

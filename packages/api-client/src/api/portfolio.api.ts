@@ -1,5 +1,5 @@
 import type {
-  CreateLotForm, CreateSellForm, HoldingLot, HoldingsSummary, SellTransaction, UpdateLotForm, UpdateSellForm,
+  CreateLotForm, CreateSellForm, DividendEntitlement, HoldingLot, HoldingsSummary, SellTransaction, UpdateLotForm, UpdateSellForm,
 } from '@tw-stock-hub/types'
 import { apiClient } from '../axios'
 
@@ -26,6 +26,11 @@ export const portfolioApi = {
 
   async deleteLot(id: string): Promise<void> {
     await apiClient.delete(`/api/portfolio/lots/${id}`)
+  },
+
+  async listDividends(stockId?: string): Promise<DividendEntitlement[]> {
+    const { data } = await apiClient.get<DividendEntitlement[]>('/api/portfolio/dividends', { params: { stockId } })
+    return data
   },
 
   async listSells(stockId?: string): Promise<SellTransaction[]> {

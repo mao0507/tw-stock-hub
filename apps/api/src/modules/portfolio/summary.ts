@@ -7,6 +7,7 @@ export type PricedHolding = {
   avgCost: number
   costBasis: number
   realizedPnl: number
+  earnedDividend: number
   price: number | null
   priceDate: string | null
 }
@@ -20,7 +21,7 @@ export function summarize(all: readonly PricedHolding[]) {
   const rows = all.filter((r) => r.shares > 0)
   const closed = all
     .filter((r) => r.shares === 0)
-    .map((r) => ({ stockId: r.stockId, name: r.name, realizedPnl: r.realizedPnl }))
+    .map((r) => ({ stockId: r.stockId, name: r.name, realizedPnl: r.realizedPnl, earnedDividend: r.earnedDividend }))
   const priced = rows.filter((r) => r.price !== null)
   const totalMarket = priced.reduce((s, r) => s + r.price! * r.shares, 0)
   const pricedCost = priced.reduce((s, r) => s + r.costBasis, 0)
@@ -47,6 +48,7 @@ export function summarize(all: readonly PricedHolding[]) {
     closed,
     totals: {
       realizedPnl: round(all.reduce((s, r) => s + r.realizedPnl, 0), 2),
+      earnedDividend: round(all.reduce((s, r) => s + r.earnedDividend, 0), 2),
       costBasis: round(rows.reduce((s, r) => s + r.costBasis, 0), 2),
       marketValue: round(totalMarket, 2),
       unrealizedPnl: round(unrealized, 2),

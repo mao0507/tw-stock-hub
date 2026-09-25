@@ -110,8 +110,25 @@ export const holdings = members.table(
     costBasis: numeric('cost_basis', { precision: 16, scale: 2 }).notNull().default('0'),
     realizedPnl: numeric('realized_pnl', { precision: 18, scale: 2 }).notNull().default('0'),
     /** 依除息日持有股數計算的累計現金股利 */
-    earnedDividend: numeric('earned_dividend', { precision: 14, scale: 2 }).notNull().default('0'),
+    earnedDividend: numeric('earned_dividend', { precision: 18, scale: 2 }).notNull().default('0'),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.userId, t.stockId] })],
+)
+
+/**
+ * 股利權利明細：依除息日當天持有股數（除息日前買入 − 除息日前賣出）計算，
+ * 由重播產生、可隨時重算；holdings.earned_dividend 為其加總。
+ */
+export const dividendEntitlements = members.table(
+  'dividend_entitlements',
+  {
+    userId: userId(),
+    stockId: varchar('stock_id', { length: 10 }).notNull(),
+    exDate: date('ex_date').notNull(),
+    cashPerShare: numeric('cash_per_share', { precision: 10, scale: 4 }).notNull(),
+    shares: integer('shares').notNull(),
+    amount: numeric('amount', { precision: 18, scale: 2 }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.stockId, t.exDate] })],
 )

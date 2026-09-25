@@ -32,3 +32,9 @@ export const pendingJobs = stocksSchema.table('pending_jobs', {
   startedAt: timestamp('started_at', { withTimezone: true }),
   finishedAt: timestamp('finished_at', { withTimezone: true }),
 })
+
+export const exDividendCalendar = stocksSchema.table('ex_dividend_calendar', {
+  exDate: date('ex_date').notNull(),
+  stockId: varchar('stock_id', { length: 10 }).notNull(),
+  cashDividend: numeric('cash_dividend', { precision: 10, scale: 4 }),
+})

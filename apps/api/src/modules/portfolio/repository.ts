@@ -1,8 +1,9 @@
-import { and, asc, eq, sql } from 'drizzle-orm'
+import { and, asc, eq, gt, isNotNull, lte, sql } from 'drizzle-orm'
 import { HTTPException } from 'hono/http-exception'
 import type { Db } from '../../db/client.js'
-import { holdingLots, holdings, sellTransactions } from '../../db/schema/members.js'
-import { stocks } from '../../db/schema/stocks.js'
+import { dividendEntitlements, holdingLots, holdings, sellTransactions } from '../../db/schema/members.js'
+import { exDividendCalendar, stocks } from '../../db/schema/stocks.js'
+import { todayInTaipei } from './dates.js'
 import { replay, round, type TradeEvent } from './replay.js'
 
 /**
@@ -75,10 +76,22 @@ async function lockPosition(tx: Tx, userId: string, stockId: string) {
  * 任一時點超賣則丟 409（transaction 回滾）；完全沒有交易才刪除 holdings 列（賣光仍保留已實現損益）。
  */
 async function recompute(tx: Tx, userId: string, stockId: string) {
-  const mine = (t: typeof holdingLots | typeof sellTransactions) => and(eq(t.userId, userId), eq(t.stockId, stockId))
-  const [lots, sells] = await Promise.all([
+  const mine = (t: typeof holdingLots | typeof sellTransactions | typeof dividendEntitlements) => and(eq(t.userId, userId), eq(t.stockId, stockId))
+  const [lots, sells, exDivs] = await Promise.all([
     tx.select().from(holdingLots).where(mine(holdingLots)).orderBy(asc(holdingLots.createdAt)),
     tx.select().from(sellTransactions).where(mine(sellTransactions)).orderBy(asc(sellTransactions.createdAt)),
+    // 已到除息日（含今天）且有現金股利的才列入已領
+    tx
+      .select({ exDate: exDividendCalendar.exDate, cash: exDividendCalendar.cashDividend })
+      .from(exDividendCalendar)
+      .where(
+        and(
+          eq(exDividendCalendar.stockId, stockId),
+          lte(exDividendCalendar.exDate, todayInTaipei()),
+          isNotNull(exDividendCalendar.cashDividend),
+          gt(exDividendCalendar.cashDividend, '0'),
+        ),
+      ),
   ])
   const events: TradeEvent[] = [
     ...lots.map((l, seq) => ({
@@ -88,6 +101,7 @@ async function recompute(tx: Tx, userId: string, stockId: string) {
       kind: 'sell' as const, id: x.id, date: x.soldAt, seq,
       price: Number(x.price), shares: x.shares, fee: Number(x.fee), tax: Number(x.tax),
     })),
+    ...exDivs.map((d, seq) => ({ kind: 'dividend' as const, date: d.exDate, seq, cashPerShare: Number(d.cash) })),
   ]
   const r = replay(events)
 
@@ -108,7 +122,22 @@ async function recompute(tx: Tx, userId: string, stockId: string) {
       .where(eq(sellTransactions.id, s.id))
   }
 
-  if (events.length === 0) {
+  const tradeCount = lots.length + sells.length
+  await tx.delete(dividendEntitlements).where(mine(dividendEntitlements))
+  if (tradeCount > 0 && r.dividends.length > 0) {
+    await tx.insert(dividendEntitlements).values(
+      r.dividends.map((d) => ({
+        userId,
+        stockId,
+        exDate: d.exDate,
+        cashPerShare: String(d.cashPerShare),
+        shares: d.shares,
+        amount: String(d.amount),
+      })),
+    )
+  }
+
+  if (tradeCount === 0) {
     await tx.delete(holdings).where(and(eq(holdings.userId, userId), eq(holdings.stockId, stockId)))
     return
   }
@@ -117,6 +146,7 @@ async function recompute(tx: Tx, userId: string, stockId: string) {
     avgCost: String(r.avgCost),
     costBasis: String(r.costBasis),
     realizedPnl: String(r.realizedPnl),
+    earnedDividend: String(r.earnedDividend),
     updatedAt: new Date(),
   }
   await tx
@@ -256,6 +286,42 @@ export function createPortfolioRepository(db: Db) {
       return true
     },
 
+    async listDividends(userId: string, stockId?: string) {
+      const rows = await db
+        .select()
+        .from(dividendEntitlements)
+        .where(
+          and(eq(dividendEntitlements.userId, userId), stockId ? eq(dividendEntitlements.stockId, stockId) : undefined),
+        )
+        .orderBy(asc(dividendEntitlements.exDate), asc(dividendEntitlements.stockId))
+      return rows.map((r) => ({
+        stockId: r.stockId,
+        exDate: r.exDate,
+        cashPerShare: Number(r.cashPerShare),
+        shares: r.shares,
+        amount: Number(r.amount),
+      }))
+    },
+
+    /**
+     * 除權息資料更新後：重算所有有交易紀錄的使用者持股（含股利權利）。
+     * 單一持股失敗（例如舊資料超賣）只記錄並略過，不中斷其他人。
+     * ponytail: 逐檔序列重算，使用者/持股多到拖慢啟動時再改為只重算有新除息資料的股票。
+     */
+    async recomputeAllPositions(): Promise<{ updated: number; failed: number }> {
+      const pairs = await db.selectDistinct({ userId: holdings.userId, stockId: holdings.stockId }).from(holdings)
+      let failed = 0
+      for (const p of pairs) {
+        try {
+          await mutate(p.userId, [p.stockId], async () => undefined)
+        } catch (err) {
+          failed++
+          console.error(`[portfolio] 重算持股失敗 user=${p.userId} stock=${p.stockId}`, err)
+        }
+      }
+      return { updated: pairs.length - failed, failed }
+    },
+
     /** 持股 + 最新收盤價（同一 DB 內 LATERAL JOIN stocks schema） */
     async holdingsWithPrice(userId: string) {
       const rows = await db.execute<{
@@ -265,10 +331,11 @@ export function createPortfolioRepository(db: Db) {
         avg_cost: string
         cost_basis: string
         realized_pnl: string
+        earned_dividend: string
         close: string | null
         price_date: string | null
       }>(sql`
-        SELECT h.stock_id, s.name, h.shares, h.avg_cost, h.cost_basis, h.realized_pnl, q.close, q.date::text AS price_date
+        SELECT h.stock_id, s.name, h.shares, h.avg_cost, h.cost_basis, h.realized_pnl, h.earned_dividend, q.close, q.date::text AS price_date
         FROM members.holdings h
         LEFT JOIN stocks.stocks s ON s.id = h.stock_id
         LEFT JOIN LATERAL (
@@ -284,6 +351,7 @@ export function createPortfolioRepository(db: Db) {
         avgCost: round(Number(r.avg_cost), 4),
         costBasis: Number(r.cost_basis),
         realizedPnl: Number(r.realized_pnl),
+        earnedDividend: Number(r.earned_dividend),
         price: r.close === null ? null : Number(r.close),
         priceDate: r.price_date,
       }))

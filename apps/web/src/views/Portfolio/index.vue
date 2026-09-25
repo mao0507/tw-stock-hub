@@ -154,7 +154,7 @@ const deleteDescription = computed(() => {
     />
 
     <template v-else-if="totals">
-      <section class="grid grid-cols-2 gap-3 lg:grid-cols-5">
+      <section class="grid grid-cols-2 gap-3 lg:grid-cols-6">
         <div class="stat-card">
           <span class="stat-label">總成本</span>
           <span class="stat-value font-mono">{{ money(totals.costBasis) }}</span>
@@ -176,6 +176,10 @@ const deleteDescription = computed(() => {
             class="stat-value font-mono"
             :class="pnlClass(totals.realizedPnl)"
           >{{ money(totals.realizedPnl) }}</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">已領股利</span>
+          <span class="stat-value font-mono text-up">{{ money(totals.earnedDividend) }}</span>
         </div>
         <div class="stat-card">
           <span class="stat-label">未實現報酬率</span>
@@ -219,8 +223,11 @@ const deleteDescription = computed(() => {
                 <th class="py-2 pr-3 text-right">
                   報酬率
                 </th>
-                <th class="py-2 text-right">
+                <th class="py-2 pr-3 text-right">
                   已實現
+                </th>
+                <th class="py-2 text-right">
+                  已領股利
                 </th>
               </tr>
             </thead>
@@ -265,15 +272,18 @@ const deleteDescription = computed(() => {
                     <ChangePercent :value="h.returnPct" />
                   </td>
                   <td
-                    class="py-2.5 text-right font-mono"
+                    class="py-2.5 pr-3 text-right font-mono"
                     :class="pnlClass(h.realizedPnl)"
                   >
                     {{ money(h.realizedPnl) }}
                   </td>
+                  <td class="py-2.5 text-right font-mono">
+                    {{ money(h.earnedDividend) }}
+                  </td>
                 </tr>
                 <tr v-if="expanded === h.stockId">
                   <td
-                    colspan="8"
+                    colspan="9"
                     class="space-y-3 bg-gray-50 px-3 py-3"
                   >
                     <div class="flex justify-end">
@@ -343,7 +353,7 @@ const deleteDescription = computed(() => {
             <span
               class="font-mono"
               :class="pnlClass(c.realizedPnl)"
-            >已實現 {{ money(c.realizedPnl) }}</span>
+            >已實現 {{ money(c.realizedPnl) }}<span class="ml-3 text-gray-500">股利 {{ money(c.earnedDividend) }}</span></span>
           </button>
           <div
             v-if="expanded === c.stockId"

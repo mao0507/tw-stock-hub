@@ -21,7 +21,7 @@ type Sell = {
 }
 type Holdings = {
   items: { stockId: string; shares: number; avgCost: number; costBasis: number; realizedPnl: number }[]
-  closed: { stockId: string; name: string; realizedPnl: number }[]
+  closed: { stockId: string; name: string; realizedPnl: number; earnedDividend: number }[]
   totals: { costBasis: number; realizedPnl: number }
 }
 
@@ -86,7 +86,7 @@ describe('賣出與已實現損益', () => {
 
     let h = await holdings()
     expect(h.items).toEqual([])
-    expect(h.closed).toEqual([{ stockId: '2330', name: '台積電', realizedPnl: 10000 }])
+    expect(h.closed).toEqual([{ stockId: '2330', name: '台積電', realizedPnl: 10000, earnedDividend: 0 }])
     expect(h.totals.realizedPnl).toBe(10000)
 
     await buy('2026-03-02', 90, 500)
@@ -173,6 +173,7 @@ describe('驗證與隔離', () => {
     ['稅為負', { tax: -1 }],
     ['手續費為負', { fee: -1 }],
     ['股數為 0', { shares: 0 }],
+    ['價格為 0', { price: 0 }],
     ['日期不存在', { soldAt: '2026-02-30' }],
   ])('%s 回 400', async (_label, patch) => {
     await buy('2026-01-02', 100, 1000)

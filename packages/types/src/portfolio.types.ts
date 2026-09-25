@@ -42,11 +42,21 @@ export interface CreateSellForm {
 
 export type UpdateSellForm = Partial<Omit<CreateSellForm, 'stockId'>>
 
-/** 已賣光但保留已實現損益的股票 */
+/** 已賣光但保留已實現損益與已領股利的股票 */
 export interface ClosedPosition {
   stockId: string
   name: string
   realizedPnl: number
+  earnedDividend: number
+}
+
+/** 股利權利：除息日當天持有股數 × 每股現金股利 */
+export interface DividendEntitlement {
+  stockId: string
+  exDate: string
+  cashPerShare: number
+  shares: number
+  amount: number
 }
 
 /** 持股（含最新收盤價與損益）；stale = 查無股價，不計入總計 */
@@ -57,6 +67,7 @@ export interface Holding {
   avgCost: number
   costBasis: number
   realizedPnl: number
+  earnedDividend: number
   price: number | null
   priceDate: string | null
   stale: boolean
@@ -68,6 +79,7 @@ export interface Holding {
 
 export interface PortfolioTotals {
   realizedPnl: number
+  earnedDividend: number
   costBasis: number
   marketValue: number
   unrealizedPnl: number

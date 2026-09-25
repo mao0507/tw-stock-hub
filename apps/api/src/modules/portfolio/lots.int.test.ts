@@ -81,7 +81,6 @@ describe('驗證與權限', () => {
   it.each([
     ['股數為 0', { shares: 0 }],
     ['股數非整數', { shares: 1.5 }],
-    ['價格為 0', { price: 0 }],
     ['價格為負', { price: -1 }],
     ['手續費為負', { fee: -1 }],
     ['日期格式錯', { boughtAt: '2026/01/02' }],
@@ -104,6 +103,12 @@ describe('驗證與權限', () => {
     const res = await addLot(alice.cookie, buy('2330', '2026-01-03', 1, 60_000_000))
     expect(res.status).toBe(400)
     expect((await holdings(alice.cookie)).items[0]!.shares).toBe(60_000_000)
+  })
+
+  it('配股以成交價 0 記錄：股數增加、均價攤低', async () => {
+    await addLot(alice.cookie, buy('2330', '2026-01-02', 100, 1000))
+    expect((await addLot(alice.cookie, buy('2330', '2026-08-01', 0, 100))).status).toBe(201)
+    expect((await holdings(alice.cookie)).items[0]).toMatchObject({ shares: 1100, costBasis: 100000, avgCost: 90.9091 })
   })
 
   it('零股可以記錄', async () => {

@@ -20,7 +20,8 @@ const summary = (shares: number) => ({
   items: [{ stockId: '2330', shares }],
   closed: [],
   totals: {
-    realizedPnl: 0, costBasis: 0, marketValue: 0, unrealizedPnl: 0, returnPct: null, staleCount: 0 },
+    realizedPnl: 0,
+    earnedDividend: 0, costBasis: 0, marketValue: 0, unrealizedPnl: 0, returnPct: null, staleCount: 0 },
 })
 
 describe('usePortfolioStore', () => {

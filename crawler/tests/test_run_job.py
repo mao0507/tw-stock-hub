@@ -19,3 +19,36 @@ def test_every_crontab_job_is_registered():
 async def test_unknown_job_raises():
     with pytest.raises(ValueError, match="未知的 job"):
         await run_job.run_one("no_such_job")
+
+
+async def test_successful_job_publishes_crawler_done_with_job_name(monkeypatch):
+    calls = []
+
+    async def fake_job():
+        return 7
+
+    async def fake_publish(name, crawl_date=None, count=0):
+        calls.append((name, count))
+
+    monkeypatch.setitem(JOBS, "exdividend", fake_job)
+    monkeypatch.setattr(run_job.publisher, "publish_done", fake_publish)
+
+    assert await run_job.run_one("exdividend") == 7
+    assert calls == [("exdividend", 7)]
+
+
+async def test_failed_job_does_not_publish(monkeypatch):
+    calls = []
+
+    async def failing_job():
+        raise RuntimeError("boom")
+
+    async def fake_publish(name, crawl_date=None, count=0):
+        calls.append(name)
+
+    monkeypatch.setitem(JOBS, "exdividend", failing_job)
+    monkeypatch.setattr(run_job.publisher, "publish_done", fake_publish)
+
+    with pytest.raises(RuntimeError):
+        await run_job.run_one("exdividend")
+    assert calls == []

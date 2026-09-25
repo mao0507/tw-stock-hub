@@ -4,8 +4,7 @@ import { type AuthEnv, requireAuth } from '../../middleware/auth.js'
 import { createPortfolioRepository, MAX_PRICE, MAX_TOTAL_SHARES } from './repository.js'
 import { summarize } from './summary.js'
 
-/** 台北時區的今天（YYYY-MM-DD） */
-export const todayInTaipei = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' }).format(new Date())
+import { todayInTaipei } from './dates.js'
 
 const tradeDate = z
   .string()
@@ -21,7 +20,8 @@ const StockId = z.string().regex(/^[0-9A-Z]{4,6}$/, '股票代號格式錯誤')
 
 const LotFields = {
   boughtAt: tradeDate,
-  price: z.number().positive().max(MAX_PRICE),
+  // 允許 0：配股、減資等股數變動以零成本批次記錄
+  price: z.number().min(0).max(MAX_PRICE),
   shares: z.number().int().positive().max(MAX_TOTAL_SHARES),
   fee: z.number().min(0).max(1_000_000),
 }
@@ -31,7 +31,7 @@ const LotPatch = z.object(LotFields).partial().refine((v) => Object.keys(v).leng
 
 const SellFields = {
   soldAt: tradeDate,
-  price: LotFields.price,
+  price: z.number().positive().max(MAX_PRICE),
   shares: LotFields.shares,
   fee: LotFields.fee,
   tax: z.number().min(0).max(1_000_000),
@@ -72,6 +72,7 @@ const Holding = z.object({
   avgCost: z.number(),
   costBasis: z.number(),
   realizedPnl: z.number(),
+  earnedDividend: z.number(),
   price: z.number().nullable(),
   priceDate: z.string().nullable(),
   stale: z.boolean(),
@@ -83,15 +84,26 @@ const Holding = z.object({
 
 const Holdings = z.object({
   items: z.array(Holding),
-  closed: z.array(z.object({ stockId: z.string(), name: z.string(), realizedPnl: z.number() })),
+  closed: z.array(
+    z.object({ stockId: z.string(), name: z.string(), realizedPnl: z.number(), earnedDividend: z.number() }),
+  ),
   totals: z.object({
     realizedPnl: z.number(),
+    earnedDividend: z.number(),
     costBasis: z.number(),
     marketValue: z.number(),
     unrealizedPnl: z.number(),
     returnPct: z.number().nullable(),
     staleCount: z.number(),
   }),
+})
+
+const Entitlement = z.object({
+  stockId: z.string(),
+  exDate: z.string(),
+  cashPerShare: z.number(),
+  shares: z.number(),
+  amount: z.number(),
 })
 
 const ErrorBody = z.object({ error: z.string() })
@@ -133,6 +145,12 @@ const routes = {
     request: { params: IdParam },
     responses: { 204: { description: '已刪除' }, 404: json(ErrorBody, '找不到批次'), 409: json(ConflictBody, '造成超賣') },
   }),
+  listDividends: createRoute({
+    method: 'get',
+    path: '/dividends',
+    request: { query: z.object({ stockId: StockId.optional() }) },
+    responses: { 200: json(z.array(Entitlement), '股利權利明細（依除息日）') },
+  }),
   listSells: createRoute({
     method: 'get',
     path: '/sells',
@@ -157,6 +175,11 @@ const routes = {
     request: { params: IdParam },
     responses: { 204: { description: '已刪除' }, 404: json(ErrorBody, '找不到賣出紀錄') },
   }),
+}
+
+/** 除權息資料更新時與 api 啟動時呼叫：重算所有持有或曾持有者的股利權利 */
+export function recomputeDividendsForStock(db: Db): Promise<{ updated: number; failed: number }> {
+  return createPortfolioRepository(db).recomputeAllPositions()
 }
 
 export function createPortfolioRoutes(db: Db, jwtSecret: string) {
@@ -189,6 +212,11 @@ export function createPortfolioRoutes(db: Db, jwtSecret: string) {
   app.openapi(routes.deleteLot, async (c) => {
     const ok = await repo.deleteLot(c.get('jwtPayload').sub, c.req.valid('param').id)
     return ok ? c.body(null, 204) : c.json({ error: '找不到批次' }, 404)
+  })
+
+  app.openapi(routes.listDividends, async (c) => {
+    const { stockId } = c.req.valid('query')
+    return c.json(await repo.listDividends(c.get('jwtPayload').sub, stockId), 200)
   })
 
   app.openapi(routes.listSells, async (c) => {

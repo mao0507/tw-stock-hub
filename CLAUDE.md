@@ -36,11 +36,11 @@ configs/        eslint / tailwind / tsconfig 共用設定
 
 ### Phase 1 待辦
 
-- [ ] portfolio 模組：自選分組 CRUD、HoldingLot CRUD、賣出、holdings 重算、P&L（排除無股價項目）、除息日持股股利
+- [ ] portfolio 模組：自選分組 CRUD（#10）；買入/賣出/重算/P&L/除息日股利已完成（#11–#13）
 - [ ] stock 模組：搬 web 目前用到的行情/法人/融資 API（參考 `../taiwan-stock-platform/apps/stock-api-service`）
 - [ ] admin 模組：搬爬蟲監控、資料健康檢查 API（admin 前端目前打的是舊路由）
 - [x] `packages/api-client`：單一 `apiClient`、純 cookie，401 導向 `/api/auth/google`（#3）
-- [ ] web `/portfolio` 頁面（shadcn-vue）：持股總覽、買入批次 CRUD 已完成（#11），賣出與股利待 #12、#13
+- [x] web `/portfolio` 頁面：持股總覽、買賣紀錄、已出清、股利明細（#11–#13）：持股總覽、買入批次 CRUD 已完成（#11），賣出與股利待 #12、#13
 - [ ] `crawler/monitor/alert.py` 的連續失敗計數存在記憶體，一次性任務下永遠歸零；改成查 `crawler_logs` 最近 N 筆
 
 ## 上線前必做（目前只在本機跑）
@@ -72,8 +72,10 @@ bash scripts/backup-members.sh               # members 加密備份
   - `seedStock` / `seedQuotes`：seed 市場資料
   - `authCookie()`：產生登入 cookie，不走 Google
   - `waitFor()`：等 LISTEN/NOTIFY 這類非同步副作用
+  - `createTestUser()`：建立 members.users 並回傳登入 cookie
 - 只驗證外部行為（HTTP 狀態、回應、後續查詢結果），不斷言內部函式。
 - crawler 用 pytest（`crawler/tests/`）。
+- `run_job` 在任務成功後以**任務名稱**發 `NOTIFY crawler_done`；api 依名稱分派（例如 `exdividend` → 重算股利）。
 
 ## 注意
 

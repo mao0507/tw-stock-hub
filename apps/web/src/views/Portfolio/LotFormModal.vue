@@ -64,7 +64,7 @@ function validate(): CreateLotForm | null {
   if (!/^[0-9A-Z]{4,6}$/.test(stockId)) e['stockId'] = '請輸入股票代號'
   if (!form.boughtAt) e['boughtAt'] = '請選擇日期'
   else if (form.boughtAt > today()) e['boughtAt'] = '日期不可晚於今天'
-  if (!(price > 0)) e['price'] = '價格須大於 0'
+  if (form.price === '' || !(price >= 0)) e['price'] = '請輸入成交價（配股請填 0）'
   if (!Number.isInteger(shares) || shares <= 0) e['shares'] = '股數須為正整數（可為零股）'
   if (!(fee >= 0)) e['fee'] = '手續費不可為負'
 
