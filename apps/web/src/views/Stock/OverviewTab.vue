@@ -205,7 +205,7 @@ function fmtNet(v: number): string {
       <div class="panel">
         <div class="panel-hd">
           <span class="panel-title">近期新聞</span>
-          <button class="ov-more" @click="emit('go', 'news')">相關新聞 →</button>
+          <!-- 相關新聞頁籤屬 Phase 3，暫不提供導向 -->
         </div>
         <div class="max-h-[320px] overflow-y-auto p-3">
           <NewsFeed :stock-id="stockId" :page-size="5" />

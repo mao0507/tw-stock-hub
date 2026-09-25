@@ -99,10 +99,6 @@ export const stockApi = {
   },
 
   // ── 基本面
-  async ensureFundamentals(id: string): Promise<void> {
-    // 歷史稀疏時觸發即時補抓，timeout 拉長
-    await apiClient.get(`/api/stocks/${id}/ensure`, { timeout: 35_000 })
-  },
   async getRevenue(id: string): Promise<RevenueItem[]> {
     const { data } = await apiClient.get(`/api/stocks/${id}/revenue`)
     return data

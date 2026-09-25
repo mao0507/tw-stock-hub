@@ -45,15 +45,15 @@ const chipView = ref<ChipView>('institutional')
 const chipViews: { key: ChipView; label: string }[] = [
   { key: 'institutional', label: '三大法人' },
   { key: 'margin', label: '融資融券' },
-  { key: 'broker', label: '分點進出' },
+  // 分點進出屬 Phase 3
 ]
 
-// 總覽「→」導向：籌碼類鍵映射到 chips 子頁籤
+// 總覽「→」導向：籌碼類鍵映射到 chips 子頁籤；Phase 3 才開放的頁籤（新聞、回測、分點）直接忽略
 function goTab(key: string): void {
-  if (key === 'institutional' || key === 'margin' || key === 'broker') {
+  if (chipViews.some((v) => v.key === key)) {
     activeTab.value = 'chips'
-    chipView.value = key
-  } else {
+    chipView.value = key as ChipView
+  } else if (tabs.some((t) => t.key === key)) {
     activeTab.value = key as TabKey
   }
 }
@@ -91,7 +91,6 @@ async function loadDividend(): Promise<void> {
   if (divLoadedFor === stockId.value) return
   divLoading.value = true
   try {
-    if (!isEtf.value) await stockApi.ensureFundamentals(stockId.value)
     dividends.value = await stockApi.getDividends(stockId.value)
     divLoadedFor = stockId.value
   } finally {
@@ -301,9 +300,7 @@ const tabs: { key: TabKey; label: string }[] = [
   { key: 'chips', label: '籌碼分析' },
   { key: 'fundamental', label: '基本面' },
   { key: 'dividend', label: '除權息' },
-  { key: 'backtest', label: '回測' },
-  { key: 'news', label: '相關新聞' },
-  { key: 'mops', label: '重大訊息' },
+  // Phase 3 才提供：回測、相關新聞、重大訊息
 ]
 </script>
 

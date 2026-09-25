@@ -59,7 +59,6 @@ async function load(): Promise<void> {
       valuation.value = v
     } else {
       etf.value = null
-      await stockApi.ensureFundamentals(props.stockId)
       const [r, f, d, v, h, s, m] = await Promise.all([
         stockApi.getRevenue(props.stockId),
         stockApi.getFinancials(props.stockId),

@@ -1,6 +1,6 @@
 // stocks schema：由 db/init/01-stocks.sql 建立、crawler 寫入。
 // 這裡只宣告 api 會查的表（唯讀映射），不參與 drizzle-kit migration。
-import { bigint, date, numeric, pgSchema, serial, text, timestamp, varchar } from 'drizzle-orm/pg-core'
+import { bigint, boolean, date, integer, numeric, pgSchema, serial, text, timestamp, varchar } from 'drizzle-orm/pg-core'
 
 export const stocksSchema = pgSchema('stocks')
 
@@ -9,6 +9,7 @@ export const stocks = stocksSchema.table('stocks', {
   name: varchar('name', { length: 50 }).notNull(),
   market: varchar('market', { length: 10 }).notNull(),
   sector: varchar('sector', { length: 50 }),
+  isActive: boolean('is_active').notNull(),
 })
 
 export const dailyQuotes = stocksSchema.table('daily_quotes', {
@@ -19,8 +20,10 @@ export const dailyQuotes = stocksSchema.table('daily_quotes', {
   low: numeric('low', { precision: 12, scale: 2 }).notNull(),
   close: numeric('close', { precision: 12, scale: 2 }).notNull(),
   volume: bigint('volume', { mode: 'number' }).notNull(),
+  value: bigint('value', { mode: 'number' }).notNull(),
   change: numeric('change', { precision: 8, scale: 2 }),
   changePct: numeric('change_pct', { precision: 8, scale: 2 }),
+  transactionCount: integer('transaction_count'),
 })
 
 export const pendingJobs = stocksSchema.table('pending_jobs', {

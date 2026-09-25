@@ -79,23 +79,23 @@ describe('GET /health', () => {
   })
 })
 
-describe('GET /api/stocks/:id/quotes', () => {
-  it('回傳 seed 的行情（新到舊）', async () => {
+describe('GET /api/stocks/:id/quote', () => {
+  it('回傳 seed 的行情（舊到新）', async () => {
     await seedQuotes(t.admin, [
       { date: '2026-09-21', stockId: '2330', close: 1000 },
       { date: '2026-09-22', stockId: '2330', close: 1010 },
     ])
-    const res = await app.request('/api/stocks/2330/quotes?days=2')
+    const res = await app.request('/api/stocks/2330/quote?limit=2')
     expect(res.status).toBe(200)
     const body = (await res.json()) as { date: string; close: string }[]
     expect(body.map((r) => [r.date, Number(r.close)])).toEqual([
-      ['2026-09-22', 1010],
       ['2026-09-21', 1000],
+      ['2026-09-22', 1010],
     ])
   })
 
   it('crawler NOTIFY crawler_done 後快取清空，查得到新資料', async () => {
-    const url = '/api/stocks/2330/quotes?days=1'
+    const url = '/api/stocks/2330/quote?limit=1'
     const first = (await (await app.request(url)).json()) as { close: string }[]
     await seedQuotes(t.admin, [{ date: '2026-09-23', stockId: '2330', close: 1020 }])
 
@@ -111,7 +111,7 @@ describe('GET /api/stocks/:id/quotes', () => {
   })
 
   it('非法代號回 400', async () => {
-    const res = await app.request('/api/stocks/abc/quotes')
+    const res = await app.request('/api/stocks/abc/quote')
     expect(res.status).toBe(400)
   })
 })
