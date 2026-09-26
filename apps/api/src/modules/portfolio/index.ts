@@ -1,6 +1,8 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
 import type { Db } from '../../db/client.js'
 import { type AuthEnv, requireAuth } from '../../middleware/auth.js'
+import { createAlertsRepository, type Triggered } from './alerts.repository.js'
+import { createAlertRoutes } from './alerts.routes.js'
 import { createPortfolioRepository, MAX_PRICE, MAX_TOTAL_SHARES } from './repository.js'
 import { summarize } from './summary.js'
 import { createWatchlistRoutes } from './watchlist.routes.js'
@@ -183,12 +185,18 @@ export function recomputeDividendsForStock(db: Db): Promise<{ updated: number; f
   return createPortfolioRepository(db).recomputeAllPositions()
 }
 
+/** 行情任務完成時呼叫：盤後評估提醒規則，回傳本次觸發的通知 */
+export function evaluateAlerts(db: Db): Promise<Triggered[]> {
+  return createAlertsRepository(db).evaluate()
+}
+
 export function createPortfolioRoutes(db: Db, jwtSecret: string) {
   const app = new OpenAPIHono<AuthEnv>()
   const repo = createPortfolioRepository(db)
 
   app.use('*', requireAuth(jwtSecret))
   app.route('/', createWatchlistRoutes(db))
+  app.route('/', createAlertRoutes(db))
 
   app.openapi(routes.holdings, async (c) => {
     const rows = await repo.holdingsWithPrice(c.get('jwtPayload').sub)

@@ -1,5 +1,7 @@
 // members schema：由 api 擁有，改動後跑 `pnpm db:generate` 產生 migration
 import {
+  boolean,
+  check,
   date,
   index,
   integer,
@@ -12,6 +14,7 @@ import {
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core'
+import { sql } from 'drizzle-orm'
 
 export const members = pgSchema('members')
 
@@ -131,4 +134,41 @@ export const dividendEntitlements = members.table(
     amount: numeric('amount', { precision: 18, scale: 2 }).notNull(),
   },
   (t) => [primaryKey({ columns: [t.userId, t.stockId, t.exDate] })],
+)
+
+/** 盤後提醒規則（#26）：行情任務完成後評估；成立後標記 triggered_at，需手動重設才會再提醒。 */
+export const ALERT_TYPES = ['price_above', 'price_below', 'change_above', 'change_below', 'volume_above'] as const
+export const alertRules = members.table(
+  'alert_rules',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: userId(),
+    stockId: varchar('stock_id', { length: 10 }).notNull(),
+    alertType: varchar('alert_type', { length: 20 }).notNull(),
+    threshold: numeric('threshold', { precision: 16, scale: 4 }).notNull(),
+    isActive: boolean('is_active').notNull().default(true),
+    triggeredAt: timestamp('triggered_at', { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index('idx_alert_rules_stock').on(t.stockId),
+    index('idx_alert_rules_user').on(t.userId),
+    check('alert_type_valid', sql`${t.alertType} IN ('price_above', 'price_below', 'change_above', 'change_below', 'volume_above')`),
+  ],
+)
+
+/** 站內通知（#26）；Telegram 等通道的送出狀態另記 */
+export const notifications = members.table(
+  'notifications',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: userId(),
+    alertRuleId: uuid('alert_rule_id').references(() => alertRules.id, { onDelete: 'set null' }),
+    stockId: varchar('stock_id', { length: 10 }),
+    title: varchar('title', { length: 200 }).notNull(),
+    body: text('body').notNull(),
+    readAt: timestamp('read_at', { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [index('idx_notifications_user_created').on(t.userId, t.createdAt)],
 )
