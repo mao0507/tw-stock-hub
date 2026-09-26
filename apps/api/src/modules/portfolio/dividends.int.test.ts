@@ -38,6 +38,7 @@ beforeEach(async () => {
   await t.admin`DELETE FROM members.holding_lots`
   await t.admin`DELETE FROM members.holdings`
   await t.admin`DELETE FROM stocks.ex_dividend_calendar`
+  await t.admin`DELETE FROM stocks.dividends`
 })
 
 const headers = { Cookie: '', 'Content-Type': 'application/json', Origin: testConfig.webOrigin }
@@ -63,6 +64,13 @@ async function exDividend(stockId: string, exDate: string, cash: number) {
   await t.admin`
     INSERT INTO stocks.ex_dividend_calendar (ex_date, stock_id, cash_dividend)
     VALUES (${exDate}, ${stockId}, ${cash})`
+}
+
+// 歷史股利（FinMind 回補，含除息日）；行事曆只有近期預告
+async function historicalDividend(stockId: string, year: string, period: string, exDate: string | null, cash: number) {
+  await t.admin`
+    INSERT INTO stocks.dividends (stock_id, dividend_year, period, cash_dividend, stock_dividend, ex_dividend_date)
+    VALUES (${stockId}, ${year}, ${period}, ${cash}, 0, ${exDate})`
 }
 
 async function entitlements(stockId = '2330'): Promise<Entitlement[]> {
@@ -131,6 +139,18 @@ describe('除息日持股計算', () => {
     expect(h.totals.earnedDividend).toBe(2500)
   })
 
+  it('歷史股利（dividends 表有除息日）也列入；與行事曆同一天只算一次', async () => {
+    await historicalDividend('2330', '113', '1', '2024-09-12', 4)
+    await historicalDividend('2330', '114', '1', '2026-07-10', 2.5)
+    await historicalDividend('2330', '115', '1', null, 9) // 無除息日：無法判斷持有，不列入
+    await exDividend('2330', '2026-07-10', 2.5)
+    await buy('2330', '2024-01-02', 1000)
+    expect((await entitlements()).map((e) => [e.exDate, e.amount])).toEqual([
+      ['2024-09-12', 4000],
+      ['2026-07-10', 2500],
+    ])
+  })
+
   it('補登買入後股利自動重算', async () => {
     await exDividend('2330', '2026-07-10', 2.5)
     await buy('2330', '2026-07-01', 1000)
@@ -163,6 +183,13 @@ describe('除權息資料更新', () => {
     const updated = await recomputeDividendsForStock(t.api.db)
     expect(updated.failed).toBe(1)
     expect((await holdings()).items[0]!.earnedDividend).toBe(3000)
+  })
+
+  it('股利歷史回補（finmind_dividends）完成後也會重算', async () => {
+    await buy('2330', '2024-01-02', 1000)
+    await historicalDividend('2330', '113', '1', '2024-09-12', 4)
+    await t.admin`SELECT pg_notify('crawler_done', '{"crawler":"finmind_dividends"}')`
+    await waitFor(async () => (await holdings()).items[0]!.earnedDividend === 4000)
   })
 
   it('其他爬蟲完成不觸發股利重算', async () => {

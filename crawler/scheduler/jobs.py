@@ -13,8 +13,9 @@ from crawlers.quote.sector import SectorCrawler
 from crawlers.quote.broker import BrokerCrawler
 from crawlers.fundamental.fundamentals import (
     MonthlyRevenueCrawler, FinancialStatementCrawler, DividendCrawler,
-    ExDividendCalendarCrawler, ShareholderDispersionCrawler,
+    ShareholderDispersionCrawler,
 )
+from crawlers.fundamental.exdividend import ExDividendCalendarCrawler, refresh_recent_dividends
 from crawlers.fundamental.valuation import ValuationCrawler, ValuationTPEXCrawler
 from crawlers.fundamental.etf import refresh_all_known_etfs
 from crawlers.news.mops import MOPSNewsCrawler
@@ -46,6 +47,7 @@ JOBS: dict[str, JobFn] = {
     "valuation": _crawler(ValuationCrawler),
     "valuation_tpex": _crawler(ValuationTPEXCrawler),
     "exdividend": _crawler(ExDividendCalendarCrawler),
+    "dividend_refresh": refresh_recent_dividends,
     "revenue": _crawler(MonthlyRevenueCrawler),
     "financials": _crawler(FinancialStatementCrawler),
     "dividend": _crawler(DividendCrawler),

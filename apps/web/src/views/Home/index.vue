@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useMarketStore } from '@/stores/market.store'
+import { useMediaQuery } from '@/composables/useMediaQuery'
 import { IndexLineChart, HeatmapChart } from '@tw-stock-hub/charts'
 import { LoadingSkeleton, useStaggerIn, useCountUp } from '@tw-stock-hub/ui'
 import { stockApi } from '@tw-stock-hub/api-client'
@@ -72,6 +73,11 @@ async function onPeriodChange(p: Period): Promise<void> {
   period.value = p
   await marketStore.fetchHistory(p)
 }
+
+// 手機熱力圖格子太小 → 改排序清單
+const isDesktop = useMediaQuery('(min-width: 768px)')
+const sectorsSorted = computed(() => [...heatmapData.value].sort((a, b) => b.changePct - a.changePct))
+const sectorMax = computed(() => Math.max(0.01, ...heatmapData.value.map(s => Math.abs(s.changePct))))
 
 // 漲跌家數比例條
 const breadth = computed(() => {
@@ -322,6 +328,34 @@ function fmtThousandShares(v: number): string {
             v-if="!heatmapData.length"
             type="chart"
           />
+          <ul
+            v-else-if="!isDesktop"
+            class="sector-list"
+          >
+            <li
+              v-for="s in sectorsSorted"
+              :key="s.sectorName"
+            >
+              <button
+                type="button"
+                class="sector-row"
+                :aria-pressed="selectedSector === s.sectorName"
+                @click="onSectorSelect(s.sectorName)"
+              >
+                <span class="truncate text-sm text-gray-900">{{ s.sectorName.replace('類指數', '') }}</span>
+                <span class="sector-bar">
+                  <span
+                    :class="s.changePct >= 0 ? 'bg-up' : 'bg-down'"
+                    :style="{ width: `${(Math.abs(s.changePct) / sectorMax) * 100}%` }"
+                  />
+                </span>
+                <span
+                  class="w-16 text-right font-mono text-sm"
+                  :class="s.changePct > 0 ? 'is-up' : s.changePct < 0 ? 'is-dn' : 'is-flat'"
+                >{{ s.changePct > 0 ? '+' : '' }}{{ s.changePct.toFixed(2) }}%</span>
+              </button>
+            </li>
+          </ul>
           <HeatmapChart
             v-else
             :data="heatmapData"
@@ -528,6 +562,21 @@ function fmtThousandShares(v: number): string {
 }
 .drill-item:hover { background: var(--bg); }
 
+.sector-list { max-height: 420px; overflow-y: auto; }
+.sector-row {
+  display: grid;
+  grid-template-columns: minmax(0, 7rem) 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 44px;
+  border-bottom: 1px solid var(--bd-soft);
+  text-align: left;
+}
+.sector-row[aria-pressed='true'] { background: #faf7f1; }
+.sector-bar { height: 6px; border-radius: 999px; background: var(--bd-soft); overflow: hidden; }
+.sector-bar > span { display: block; height: 100%; border-radius: 999px; }
+
 .rank-row {
   display: flex;
   align-items: center;
@@ -537,6 +586,21 @@ function fmtThousandShares(v: number): string {
   border-bottom: 1px solid var(--bd-soft);
   transition: background 0.15s;
 }
-li:last-child > .rank-row { border-bottom: none; }
+li:last-child > .sector-list { max-height: 420px; overflow-y: auto; }
+.sector-row {
+  display: grid;
+  grid-template-columns: minmax(0, 7rem) 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 44px;
+  border-bottom: 1px solid var(--bd-soft);
+  text-align: left;
+}
+.sector-row[aria-pressed='true'] { background: #faf7f1; }
+.sector-bar { height: 6px; border-radius: 999px; background: var(--bd-soft); overflow: hidden; }
+.sector-bar > span { display: block; height: 100%; border-radius: 999px; }
+
+.rank-row { border-bottom: none; }
 .rank-row:hover { background: #faf7f1; }
 </style>

@@ -2,7 +2,7 @@ import { and, asc, eq, gt, isNotNull, lte, sql } from 'drizzle-orm'
 import { HTTPException } from 'hono/http-exception'
 import type { Db } from '../../db/client.js'
 import { dividendEntitlements, holdingLots, holdings, sellTransactions } from '../../db/schema/members.js'
-import { exDividendCalendar, stocks } from '../../db/schema/stocks.js'
+import { dividends, exDividendCalendar, stocks } from '../../db/schema/stocks.js'
 import { todayInTaipei } from './dates.js'
 import { replay, round, type TradeEvent } from './replay.js'
 
@@ -77,7 +77,8 @@ async function lockPosition(tx: Tx, userId: string, stockId: string) {
  */
 async function recompute(tx: Tx, userId: string, stockId: string) {
   const mine = (t: typeof holdingLots | typeof sellTransactions | typeof dividendEntitlements) => and(eq(t.userId, userId), eq(t.stockId, stockId))
-  const [lots, sells, exDivs] = await Promise.all([
+  const today = todayInTaipei()
+  const [lots, sells, calendarDivs, historyDivs] = await Promise.all([
     tx.select().from(holdingLots).where(mine(holdingLots)).orderBy(asc(holdingLots.createdAt)),
     tx.select().from(sellTransactions).where(mine(sellTransactions)).orderBy(asc(sellTransactions.createdAt)),
     // 已到除息日（含今天）且有現金股利的才列入已領
@@ -87,12 +88,29 @@ async function recompute(tx: Tx, userId: string, stockId: string) {
       .where(
         and(
           eq(exDividendCalendar.stockId, stockId),
-          lte(exDividendCalendar.exDate, todayInTaipei()),
+          lte(exDividendCalendar.exDate, today),
           isNotNull(exDividendCalendar.cashDividend),
           gt(exDividendCalendar.cashDividend, '0'),
         ),
       ),
+    // 歷史股利（行事曆只有近期預告）；沒有除息日的無法判斷當時持股，不列入
+    tx
+      .select({ exDate: dividends.exDividendDate, cash: dividends.cashDividend })
+      .from(dividends)
+      .where(
+        and(
+          eq(dividends.stockId, stockId),
+          isNotNull(dividends.exDividendDate),
+          lte(dividends.exDividendDate, today),
+          gt(dividends.cashDividend, '0'),
+        ),
+      ),
   ])
+  // 同一除息日兩邊都有 → 以行事曆為準，只算一次
+  const byDate = new Map<string, number>()
+  for (const d of historyDivs) byDate.set(d.exDate!, Number(d.cash))
+  for (const d of calendarDivs) byDate.set(d.exDate, Number(d.cash))
+  const exDivs = [...byDate].map(([exDate, cash]) => ({ exDate, cash }))
   const events: TradeEvent[] = [
     ...lots.map((l, seq) => ({
       kind: 'buy' as const, date: l.boughtAt, seq, price: Number(l.price), shares: l.shares, fee: Number(l.fee),
@@ -101,7 +119,7 @@ async function recompute(tx: Tx, userId: string, stockId: string) {
       kind: 'sell' as const, id: x.id, date: x.soldAt, seq,
       price: Number(x.price), shares: x.shares, fee: Number(x.fee), tax: Number(x.tax),
     })),
-    ...exDivs.map((d, seq) => ({ kind: 'dividend' as const, date: d.exDate, seq, cashPerShare: Number(d.cash) })),
+    ...exDivs.map((d, seq) => ({ kind: 'dividend' as const, date: d.exDate, seq, cashPerShare: d.cash })),
   ]
   const r = replay(events)
 

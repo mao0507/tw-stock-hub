@@ -17,19 +17,21 @@ function onInput(q: string): void {
   query.value = q
   if (timer) clearTimeout(timer)
   if (!q.trim()) { seq++; results.value = []; open.value = false; return }
-  timer = setTimeout(async () => {
-    const id = ++seq
-    try {
-      const data = await stockApi.searchStocks(q.trim())
-      if (id !== seq) return
-      results.value = data
-      active.value = -1
-      open.value = data.length > 0
-    } catch {
-      results.value = []
-      open.value = false
-    }
-  }, 250)
+  timer = setTimeout(() => { void search(q.trim()) }, 250)
+}
+
+async function search(q: string): Promise<void> {
+  const id = ++seq
+  try {
+    const data = await stockApi.searchStocks(q)
+    if (id !== seq) return
+    results.value = data
+    active.value = -1
+    open.value = data.length > 0
+  } catch {
+    results.value = []
+    open.value = false
+  }
 }
 
 function go(id: string): void {

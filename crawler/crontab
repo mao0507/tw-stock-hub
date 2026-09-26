@@ -13,6 +13,7 @@
 32 15 * * 1-5      python run_job.py valuation_tpex
 5  16 * * 1-5      python run_job.py sector
 20 16 * * 1-5      python run_job.py exdividend
+40 21 * * 1-5      python run_job.py dividend_refresh
 30 16 * * 1-5      python run_job.py institutional_twse
 32 16 * * 1-5      python run_job.py institutional_tpex
 0  18 * * 1-5      python run_job.py broker

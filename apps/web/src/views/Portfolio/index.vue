@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import type { CreateLotForm, CreateSellForm, Holding, HoldingLot, SellTransaction } from '@tw-stock-hub/types'
 import { AppAlertDialog, AppButton, ChangePercent, EmptyState, LoadingSkeleton } from '@tw-stock-hub/ui'
 import { PieChart, PIE_PALETTE } from '@tw-stock-hub/charts'
 import { usePortfolioStore } from '@/stores/portfolio.store'
+import { useMediaQuery } from '@/composables/useMediaQuery'
 import LotFormModal from './LotFormModal.vue'
 import SellFormModal from './SellFormModal.vue'
 import TradeDetail from './TradeDetail.vue'
@@ -37,11 +38,7 @@ const apiError = (e: unknown, fallback: string) => {
 onMounted(() => { void store.fetchHoldings() })
 
 // 桌機表格／手機卡片只渲染其一，避免 TradeDetail 重複掛載、重複打 API
-const mq = window.matchMedia?.('(min-width: 768px)')
-const isDesktop = ref(mq?.matches ?? true)
-const onMq = (e: MediaQueryListEvent) => { isDesktop.value = e.matches }
-mq?.addEventListener('change', onMq)
-onBeforeUnmount(() => mq?.removeEventListener('change', onMq))
+const isDesktop = useMediaQuery('(min-width: 768px)')
 
 const allocation = computed(() =>
   holdings.value

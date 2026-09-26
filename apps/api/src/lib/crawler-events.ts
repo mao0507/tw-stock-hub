@@ -3,8 +3,10 @@ import { responseCache } from './cache.js'
 
 export const CRAWLER_DONE_CHANNEL = 'crawler_done'
 
-/** 會觸發股利重算的爬蟲（run_job 的任務名稱，與爬蟲類別名稱皆接受） */
-const EX_DIVIDEND_CRAWLERS = new Set(['exdividend', 'ExDividendCalendarCrawler'])
+/** 會觸發股利重算的爬蟲：除權息行事曆與股利歷史（run_job 任務名稱、爬蟲類別名稱、FinMind 回補皆接受） */
+const EX_DIVIDEND_CRAWLERS = new Set([
+  'exdividend', 'ExDividendCalendarCrawler', 'dividend', 'DividendCrawler', 'dividend_refresh', 'finmind_dividends',
+])
 
 export type CrawlerDoneHandlers = {
   /** 除權息行事曆更新後：重算持股的股利權利 */

@@ -3,12 +3,7 @@
 import { watch } from 'vue'
 import { useECharts, BASE_ECHARTS_OPTION, STOCK_COLORS } from '@tw-stock-hub/charts'
 import type { ECOption } from '@tw-stock-hub/charts'
-
-export interface TrendSeries {
-  name: string
-  color: string
-  data: { date: string; value: number | null }[]
-}
+import type { TrendSeries } from './trend'
 
 const props = withDefaults(defineProps<{
   series: TrendSeries[]

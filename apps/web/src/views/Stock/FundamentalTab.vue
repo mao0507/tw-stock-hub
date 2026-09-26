@@ -9,7 +9,7 @@ import type {
   EtfHoldings, StockScore, Institutional, Margin, FinancialMetrics,
 } from '@tw-stock-hub/types'
 import TrendChart from './TrendChart.vue'
-import type { TrendSeries } from './TrendChart.vue'
+import type { TrendSeries } from './trend'
 import RevenueChart from './RevenueChart.vue'
 
 type FundView = 'key' | 'profit' | 'growth' | 'value' | 'safety' | 'holders'

@@ -34,7 +34,7 @@ CRAWLER_MAP = {
     "dividend": ("crawlers.fundamental.fundamentals", "DividendCrawler"),
     "valuation": ("crawlers.fundamental.valuation", "ValuationCrawler"),
     "valuation_tpex": ("crawlers.fundamental.valuation", "ValuationTPEXCrawler"),
-    "exdividend": ("crawlers.fundamental.fundamentals", "ExDividendCalendarCrawler"),
+    "exdividend": ("crawlers.fundamental.exdividend", "ExDividendCalendarCrawler"),
     "holders": ("crawlers.fundamental.fundamentals", "ShareholderDispersionCrawler"),
     "mops": ("crawlers.news.mops", "MOPSNewsCrawler"),
 }

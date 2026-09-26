@@ -82,7 +82,6 @@ watch([activeTab, chipView], ([tab, view]) => {
 
 // ── 基本面內容移至 FundamentalTab；此處僅保留除權息分頁所需
 const dividends = ref<DividendItem[]>([])
-const isEtf = computed(() => /^00/.test(stockId.value))
 
 // 除權息分頁
 const divLoading = ref(false)

@@ -6,7 +6,6 @@ from crawlers.base.base_news_crawler import BaseNewsCrawler, NewsItem
 from db.models import NewsSourceEnum, NewsCategoryEnum
 
 SEQ_NO_RE = re.compile(r"SEQ_NO\.value='(\d+)'")
-SPOKE_TIME_RE = re.compile(r"SPOKE_TIME\.value='(\d+)'")
 COMPANY_ID_RE = re.compile(r"COMPANY_ID\.value='(\d+)'")
 
 
@@ -46,7 +45,6 @@ class MOPSNewsCrawler(BaseNewsCrawler):
             button = cells[5].find("input")
             onclick = button.get("onclick", "") if button else ""
             seq_m = SEQ_NO_RE.search(onclick)
-            time_m = SPOKE_TIME_RE.search(onclick)
             id_m = COMPANY_ID_RE.search(onclick)
             rows.append({
                 "stock_id": cells[0].get_text(strip=True),

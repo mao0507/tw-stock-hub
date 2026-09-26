@@ -1,4 +1,4 @@
-"""基本面爬蟲：月營收、財報(EPS/獲利)、股利、大戶持股、除權息行事曆（估值見 valuation.py）。
+"""基本面爬蟲：月營收、財報(EPS/獲利)、股利、大戶持股（估值見 valuation.py、除權息見 exdividend.py）。
 
 資料源：TWSE OpenAPI（openapi.twse.com.tw）+ TDCC OpenData（集保戶股權分散）。
 皆為「最新快照」端點，crawl() 抓全部上市公司寫入。上市(TWSE)為主。
@@ -167,29 +167,6 @@ class DividendCrawler(BaseCrawler):
             }
         count = await DataWriter.write_dividends(list(dedup.values()))
         logger.info(f"[{self.crawler_name}] {count} 筆股利")
-        return count
-
-
-class ExDividendCalendarCrawler(BaseCrawler):
-    crawler_name = "ExDividendCalendarCrawler"
-
-    async def crawl(self) -> int:
-        data = await _fetch(f"{OPENAPI}/exchangeReport/TWT48U_ALL")
-        records = []
-        for r in data:
-            sid = str(r.get("Code", "")).strip()
-            exd = _roc_to_date(r.get("Date", ""))
-            if not sid.isdigit() or not exd:
-                continue
-            records.append({
-                "ex_date": exd,
-                "stock_id": sid,
-                "stock_name": str(r.get("Name", "")).strip()[:50],
-                "cash_dividend": _num(r.get("CashDividend")),
-                "stock_dividend_ratio": _num(r.get("StockDividendRatio")),
-            })
-        count = await DataWriter.write_ex_dividend(records)
-        logger.info(f"[{self.crawler_name}] {count} 筆除權息")
         return count
 
 
