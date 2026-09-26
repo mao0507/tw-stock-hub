@@ -8,6 +8,8 @@
 # ── 盤後行情 ──
 40 14 * * 1-5      python run_job.py twse_daily
 45 14 * * 1-5      python run_job.py tpex_daily
+55 14 * * 1-5      python run_job.py technical
+58 14 * * 1-5      python run_job.py strength
 0  15 * * 1-5      python run_job.py market_index
 30 15 * * 1-5      python run_job.py valuation
 32 15 * * 1-5      python run_job.py valuation_tpex

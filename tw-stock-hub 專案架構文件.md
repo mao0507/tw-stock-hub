@@ -173,3 +173,6 @@ sequenceDiagram
 | 23 | 股利計算 | 除息日持有股數 |
 | 24 | 時序壓縮 | 所有 hypertable 30 天後壓縮 |
 | 25 | 使用範圍/曝露 | 自用 + 親友邀請制；目前只在本機，上線前補 API 全面驗證與 Tunnel |
+| 26 | 技術指標與 RS 實作 | crawler `analytics/`（technical、strength）一次性任務，排在行情之後；公式與前端圖表共用同一套（MA/RSI/KD/MACD）。RS＝20/60/120/250 日加權報酬的全市場百分位，歷史不足 250 日不給分 |
+| 27 | 選股器 | 單一 `POST /screener`，一次 SQL；hypertable 帶常數日期避免鎖滿 chunk；法人／成交量單位統一為張 |
+| 28 | 歷史回補 | 逐日資料（行情、籌碼、大盤、估值）走 TWSE/TPEx 依日期端點；多年基本面（股利含除息日、財報、營收）只能逐檔走 FinMind，依成交值排序、可續跑 |

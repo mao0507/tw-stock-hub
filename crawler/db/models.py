@@ -2,7 +2,7 @@ import enum
 
 from sqlalchemy import (
     BigInteger, Boolean, Column, Date, DateTime,
-    Enum, Integer, Numeric, String, Text, UniqueConstraint,
+    Enum, Integer, Numeric, SmallInteger, String, Text, UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import DeclarativeBase
@@ -237,6 +237,36 @@ class ValuationModel(Base):
     pe = Column(Numeric(10, 2))
     pb = Column(Numeric(10, 2))
     dividend_yield = Column(Numeric(8, 2))
+
+
+class TechnicalIndicatorModel(Base):
+    """每日技術指標（analytics/technical.py 計算；欄位須與 db/init/01-stocks.sql 一致）"""
+    __tablename__ = "technical_indicators"
+    date = Column(Date, primary_key=True)
+    stock_id = Column(String(10), primary_key=True)
+    ma5 = Column(Numeric(12, 2))
+    ma10 = Column(Numeric(12, 2))
+    ma20 = Column(Numeric(12, 2))
+    ma60 = Column(Numeric(12, 2))
+    ma120 = Column(Numeric(12, 2))
+    ma240 = Column(Numeric(12, 2))
+    rsi14 = Column(Numeric(6, 2))
+    k9 = Column(Numeric(6, 2))
+    d9 = Column(Numeric(6, 2))
+    dif = Column(Numeric(12, 2))
+    dea = Column(Numeric(12, 2))
+    macd_hist = Column(Numeric(12, 2))
+    vol_ma5 = Column(BigInteger)
+    vol_ma20 = Column(BigInteger)
+
+
+class MarketStrengthModel(Base):
+    """RS 相對強弱（analytics/strength.py；欄位須與 db/init/01-stocks.sql 一致）"""
+    __tablename__ = "market_strength"
+    date = Column(Date, primary_key=True)
+    stock_id = Column(String(10), primary_key=True)
+    rs_score = Column(SmallInteger, nullable=False)
+    weighted_return = Column(Numeric(10, 4), nullable=False)
 
 
 class ShareholderDispersionModel(Base):

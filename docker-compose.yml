@@ -13,6 +13,7 @@ services:
       API_DB_PASSWORD: ${API_DB_PASSWORD:?}
       CRAWLER_DB_PASSWORD: ${CRAWLER_DB_PASSWORD:?}
       NO_TS_TUNE: "true"
+    # max_locks_per_transaction：三年以上資料的 hypertable 各有上百個 chunk，跨表查詢需鎖大量 chunk（預設 64 不夠）
     command: >
       postgres
       -c shared_buffers=256MB
@@ -20,6 +21,7 @@ services:
       -c work_mem=16MB
       -c maintenance_work_mem=64MB
       -c max_connections=30
+      -c max_locks_per_transaction=512
       -c timescaledb.max_background_workers=4
     volumes:
       - db_data:/var/lib/postgresql/data

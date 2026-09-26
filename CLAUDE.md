@@ -31,7 +31,7 @@ configs/        eslint / tailwind / tsconfig 共用設定
 ## 分階段
 
 - Phase 1：已完成（#2–#16）
-- Phase 2：技術指標、RS、screener
+- Phase 2：技術指標、RS、screener（#19–#21 完成；crawler `analytics/`，API `/stocks/{id}/indicators`、`POST /screener`）
 - Phase 3：Alert/通知、Telegram、backtest、score、news、分點（含 on-demand 分點爬取）
 
 ### Phase 1 待辦
@@ -67,6 +67,8 @@ docker compose exec -d crawler sh -c 'python scripts/backfill_history.py --years
 docker compose exec -d crawler sh -c 'python scripts/backfill_history.py --years 3 --only tpex_daily,institutional_tpex,margin_tpex,valuation_tpex > logs/backfill_tpex.log 2>&1'
 # 逐檔（FinMind，歷史只能從這補）：股利含除息日 → 財報 → 月營收 → 資產負債表；可中斷續跑
 docker compose exec -d crawler sh -c 'python scripts/backfill_finmind.py > logs/backfill_finmind.log 2>&1'
+# 行情回補後：技術指標、RS 全量回算（之後每日排程只算當天）
+docker compose exec crawler python run_job.py technical_full && docker compose exec crawler python run_job.py strength_full
 docker compose exec crawler python run_job.py exdividend && docker compose exec crawler python run_job.py dividend
 
 docker compose up -d --build                 # 全部（需先 cp .env.example .env 並填值）
@@ -87,7 +89,9 @@ bash scripts/backup-members.sh               # members 加密備份
 
 ## 注意
 
-- `db/init/` 只在 DB volume **首次**建立時執行；改了 init SQL 要自己寫補丁 SQL 或重建 volume（stocks 可重爬，members 先備份）。
+- `db/init/` 只在 DB volume **首次**建立時執行；改了 init SQL 要同時在 `db/patches/` 加補丁（冪等），以 superuser 套用：
+  `docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < db/patches/<檔名>.sql`
+- 查 hypertable 要帶**常數日期條件**（先查出日期再帶入），否則會鎖住所有 chunk；三年資料約 155 個 chunk／表，DB 已設 `max_locks_per_transaction=512`。
 - drizzle 產生的 migration 若含 `CREATE SCHEMA "members"`，改成 `IF NOT EXISTS`（schema 由 init 預建）。
 - `financial_statements` 一律存**單季**。TWSE OpenAPI 綜合損益表是年初至今累計，crawler 以 `crawlers/fundamental/ytd.py` 扣除前幾季換算；新增財報來源時要確認是單季還是累計。
 - crawler model 與 `db/init/01-stocks.sql` 欄位必須一致（曾漏 `dividends.ex_dividend_date`、`market_index` 開高低），改 model 時同步改 init。

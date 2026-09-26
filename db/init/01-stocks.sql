@@ -364,6 +364,25 @@ CREATE TABLE IF NOT EXISTS pending_jobs (
 CREATE INDEX IF NOT EXISTS idx_pending_jobs_pending
   ON pending_jobs (created_at) WHERE status = 'pending';
 
+-- ── 技術指標（Phase 2，crawler analytics/technical.py 每日增量） ──
+CREATE TABLE IF NOT EXISTS technical_indicators (
+  date DATE NOT NULL, stock_id VARCHAR(10) NOT NULL,
+  ma5 NUMERIC(12,2), ma10 NUMERIC(12,2), ma20 NUMERIC(12,2), ma60 NUMERIC(12,2), ma120 NUMERIC(12,2), ma240 NUMERIC(12,2),
+  rsi14 NUMERIC(6,2), k9 NUMERIC(6,2), d9 NUMERIC(6,2),
+  dif NUMERIC(12,2), dea NUMERIC(12,2), macd_hist NUMERIC(12,2),
+  vol_ma5 BIGINT, vol_ma20 BIGINT,
+  PRIMARY KEY (date, stock_id));
+SELECT create_hypertable('technical_indicators','date',if_not_exists=>TRUE);
+CREATE INDEX IF NOT EXISTS idx_ti_stock ON technical_indicators(stock_id, date DESC);
+
+-- ── RS 相對強弱（Phase 2，crawler analytics/strength.py 每日計算） ──
+CREATE TABLE IF NOT EXISTS market_strength (
+  date DATE NOT NULL, stock_id VARCHAR(10) NOT NULL,
+  rs_score SMALLINT NOT NULL, weighted_return NUMERIC(10,4) NOT NULL,
+  PRIMARY KEY (date, stock_id));
+SELECT create_hypertable('market_strength','date',if_not_exists=>TRUE);
+CREATE INDEX IF NOT EXISTS idx_ms_stock ON market_strength(stock_id, date DESC);
+
 -- ── 壓縮：所有 hypertable 超過 30 天的 chunk 自動壓縮 ──
 DO $$
 DECLARE

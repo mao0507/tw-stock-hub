@@ -345,3 +345,35 @@ export interface InstitutionalParams {
 export interface MarginParams {
   days?: number
 }
+
+/** 技術指標（#19，後端每日預算） */
+export interface IndicatorPoint {
+  date: string
+  ma5: number | null
+  ma10: number | null
+  ma20: number | null
+  ma60: number | null
+  ma120: number | null
+  ma240: number | null
+  rsi14: number | null
+  k9: number | null
+  d9: number | null
+  dif: number | null
+  dea: number | null
+  macdHist: number | null
+  volMa5: number | null
+  volMa20: number | null
+  /** RS 相對強弱百分位 1–99（#20） */
+  rsScore: number | null
+}
+
+export interface StockIndicators {
+  latest: (IndicatorPoint & {
+    close: number
+    /** MA5 > MA10 > MA20 > MA60 */
+    bullishAlignment: boolean
+    aboveMa20: boolean | null
+    aboveMa60: boolean | null
+  }) | null
+  series: IndicatorPoint[]
+}

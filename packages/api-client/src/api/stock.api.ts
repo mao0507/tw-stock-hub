@@ -7,7 +7,7 @@ import type {
   BrokerStreak, BrokerConcentration,
   RevenueItem, FinancialItem, DividendItem, Valuation, HolderItem, ExDividendItem, EtfHoldings,
   FinancialMetrics,
-  StockScore, BacktestParams, BacktestResult,
+  StockScore, BacktestParams, BacktestResult, StockIndicators,
   ContinuousItem, NewsItem, NewsParams, MopsParams,
   ScreenerFilter, ScreenerResponse, PaginatedResponse, Market,
 } from '@tw-stock-hub/types'
@@ -115,6 +115,11 @@ export const stockApi = {
     const { data } = await apiClient.get(`/api/stocks/${id}/dividends`)
     return data
   },
+  async getIndicators(id: string, days = 120): Promise<StockIndicators> {
+    const { data } = await apiClient.get<StockIndicators>(`/api/stocks/${id}/indicators`, { params: { days } })
+    return data
+  },
+
   async getValuation(id: string): Promise<Valuation> {
     const { data } = await apiClient.get(`/api/stocks/${id}/valuation`)
     return data

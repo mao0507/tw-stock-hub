@@ -43,4 +43,4 @@ target-version = "py312"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-addopts = "--cov=pipeline.cleaner --cov=pipeline.validator --cov=monitor.alert --cov=crawlers.news.deduplicator --cov=crawlers.news.stock_mention_extractor --cov=crawlers.base.base_crawler --cov-report=term-missing --cov-fail-under=80"
+addopts = "--cov=pipeline.cleaner --cov=pipeline.validator --cov=monitor.alert --cov=crawlers.news.deduplicator --cov=crawlers.news.stock_mention_extractor --cov=crawlers.base.base_crawler --cov=analytics.technical --cov=analytics.strength --cov-report=term-missing --cov-fail-under=80"

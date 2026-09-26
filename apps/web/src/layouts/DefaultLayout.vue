@@ -37,6 +37,7 @@ const ICONS = {
   calendar: 'M4 5h16v15H4zM4 10h16M8 3v4M16 3v4',
   institutional: 'M3 21h18M5 21V9l7-5 7 5v12M9 21v-6h6v6',
   margin: 'M12 3v18M17 6H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6',
+  screener: 'M4 5h16l-6 7v6l-4 2v-8z',
   more: 'M5 12h.01M12 12h.01M19 12h.01',
 }
 
@@ -47,6 +48,7 @@ const navItems = [
   { name: 'calendar', label: '除權息行事曆', short: '行事曆', icon: ICONS.calendar },
   { name: 'institutional', label: '法人動向', short: '法人', icon: ICONS.institutional },
   { name: 'margin', label: '融資融券', short: '融資券', icon: ICONS.margin },
+  { name: 'screener', label: '選股器', short: '選股', icon: ICONS.screener },
 ]
 // 手機底部列放前四項，其餘收進「更多」
 const bottomItems = navItems.slice(0, 4)

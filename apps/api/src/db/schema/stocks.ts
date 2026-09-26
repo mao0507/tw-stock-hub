@@ -1,6 +1,6 @@
 // stocks schema：由 db/init/01-stocks.sql 建立、crawler 寫入。
 // 這裡只宣告 api 會查的表（唯讀映射），不參與 drizzle-kit migration。
-import { bigint, boolean, date, integer, jsonb, numeric, pgSchema, serial, text, timestamp, varchar } from 'drizzle-orm/pg-core'
+import { bigint, boolean, date, integer, jsonb, numeric, pgSchema, serial, smallint, text, timestamp, varchar } from 'drizzle-orm/pg-core'
 
 export const stocksSchema = pgSchema('stocks')
 
@@ -126,6 +126,35 @@ export const valuations = stocksSchema.table('valuations', {
   pe: numeric('pe', { precision: 10, scale: 2 }),
   pb: numeric('pb', { precision: 10, scale: 2 }),
   dividendYield: numeric('dividend_yield', { precision: 8, scale: 2 }),
+})
+
+// Phase 2：技術指標（crawler analytics/technical.py 每日增量寫入）
+const p = (name: string) => numeric(name, { precision: 12, scale: 2 })
+export const technicalIndicators = stocksSchema.table('technical_indicators', {
+  date: date('date').notNull(),
+  stockId: varchar('stock_id', { length: 10 }).notNull(),
+  ma5: p('ma5'),
+  ma10: p('ma10'),
+  ma20: p('ma20'),
+  ma60: p('ma60'),
+  ma120: p('ma120'),
+  ma240: p('ma240'),
+  rsi14: numeric('rsi14', { precision: 6, scale: 2 }),
+  k9: numeric('k9', { precision: 6, scale: 2 }),
+  d9: numeric('d9', { precision: 6, scale: 2 }),
+  dif: p('dif'),
+  dea: p('dea'),
+  macdHist: p('macd_hist'),
+  volMa5: bigint('vol_ma5', { mode: 'number' }),
+  volMa20: bigint('vol_ma20', { mode: 'number' }),
+})
+
+// Phase 2：RS 相對強弱（crawler analytics/strength.py）
+export const marketStrength = stocksSchema.table('market_strength', {
+  date: date('date').notNull(),
+  stockId: varchar('stock_id', { length: 10 }).notNull(),
+  rsScore: smallint('rs_score').notNull(),
+  weightedReturn: numeric('weighted_return', { precision: 10, scale: 4 }).notNull(),
 })
 
 export const etfHoldings = stocksSchema.table('etf_holdings', {
