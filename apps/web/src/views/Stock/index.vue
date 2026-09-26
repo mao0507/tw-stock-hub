@@ -49,7 +49,7 @@ const chipViews: { key: ChipView; label: string }[] = [
   // 分點進出屬 Phase 3
 ]
 
-// 總覽「→」導向：籌碼類鍵映射到 chips 子頁籤；Phase 3 才開放的頁籤（新聞、回測、分點）直接忽略
+// 總覽「→」導向：籌碼類鍵映射到 chips 子頁籤；不在頁籤列表的鍵直接忽略
 function goTab(key: string): void {
   if (chipViews.some((v) => v.key === key)) {
     activeTab.value = 'chips'
@@ -289,8 +289,9 @@ const tabs: { key: TabKey; label: string }[] = [
   { key: 'chips', label: '籌碼分析' },
   { key: 'fundamental', label: '基本面' },
   { key: 'dividend', label: '除權息' },
+  { key: 'news', label: '相關新聞' },
+  { key: 'mops', label: '重大訊息' },
   { key: 'backtest', label: '回測' },
-  // 相關新聞、重大訊息：#24 新聞 API 上線後加入
 ]
 </script>
 

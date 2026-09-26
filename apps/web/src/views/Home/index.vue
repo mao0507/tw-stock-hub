@@ -4,7 +4,7 @@ import { storeToRefs } from 'pinia'
 import { useMarketStore } from '@/stores/market.store'
 import { useMediaQuery } from '@/composables/useMediaQuery'
 import { IndexLineChart, HeatmapChart } from '@tw-stock-hub/charts'
-import { LoadingSkeleton, useStaggerIn, useCountUp } from '@tw-stock-hub/ui'
+import { LoadingSkeleton, NewsFeed, useStaggerIn, useCountUp } from '@tw-stock-hub/ui'
 import { stockApi } from '@tw-stock-hub/api-client'
 import type { InstitutionalRankingItem, MarginRankingItem, SectorStockItem } from '@tw-stock-hub/types'
 
@@ -469,6 +469,35 @@ function fmtThousandShares(v: number): string {
             暫無資料
           </li>
         </ol>
+      </section>
+    </div>
+
+    <!-- 新聞 -->
+    <div class="grid gap-5 lg:grid-cols-2">
+      <section class="panel">
+        <div class="panel-hd">
+          <h2 class="panel-title">
+            市場新聞
+          </h2>
+          <span class="panel-tag">NEWS</span>
+        </div>
+        <div class="max-h-[520px] overflow-y-auto">
+          <NewsFeed :page-size="10" />
+        </div>
+      </section>
+      <section class="panel">
+        <div class="panel-hd">
+          <h2 class="panel-title">
+            重大訊息
+          </h2>
+          <span class="panel-tag">MOPS</span>
+        </div>
+        <div class="max-h-[520px] overflow-y-auto">
+          <NewsFeed
+            category="major_announcement"
+            :page-size="10"
+          />
+        </div>
       </section>
     </div>
   </div>

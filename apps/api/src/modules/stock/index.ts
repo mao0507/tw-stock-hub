@@ -7,6 +7,7 @@ import { registerMarketRoutes } from './market.js'
 import { registerRankingRoutes } from './rankings.js'
 import { registerOverviewRoutes } from './overview.js'
 import { registerBacktestRoutes } from './backtest.js'
+import { registerNewsRoutes } from './news.js'
 import { registerScoreRoutes } from './score.js'
 import { registerScreenerRoutes } from './screener.js'
 import { registerTechnicalRoutes } from './technical.js'
@@ -24,5 +25,6 @@ export function createStockRoutes(db: Db) {
   registerScreenerRoutes(app, db)
   registerScoreRoutes(app, db)
   registerBacktestRoutes(app, db)
+  registerNewsRoutes(app, db)
   return app
 }

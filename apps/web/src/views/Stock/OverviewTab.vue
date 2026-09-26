@@ -1,7 +1,8 @@
 <script setup lang="ts">
-// 總覽分頁：走勢 + 估值/體質評分 + 籌碼速覽（參考玩股網總覽 / 財報狗健診）
+// 總覽分頁：走勢 + 估值/體質評分 + 籌碼速覽 + 近期新聞（參考玩股網總覽 / 財報狗健診）
 import { ref, computed, watch, onMounted } from 'vue'
 import { IndexLineChart } from '@tw-stock-hub/charts'
+import { NewsFeed } from '@tw-stock-hub/ui'
 import { stockApi } from '@tw-stock-hub/api-client'
 import type { DailyQuote, Institutional, Margin, Valuation, StockScore } from '@tw-stock-hub/types'
 
@@ -119,7 +120,7 @@ function fmtNet(v: number): string {
         </div>
       </div>
 
-      <!-- 右欄：估值 + 籌碼速覽（近期新聞屬 Phase 3，上線前不佔版面） -->
+      <!-- 右欄：估值 + 籌碼速覽 -->
       <div class="flex flex-col gap-4">
         <div class="panel">
           <div class="panel-hd">
@@ -198,6 +199,16 @@ function fmtNet(v: number): string {
             </div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-hd">
+        <span class="panel-title">近期新聞</span>
+        <button class="ov-more" @click="emit('go', 'news')">更多 →</button>
+      </div>
+      <div class="max-h-[360px] overflow-y-auto">
+        <NewsFeed :stock-id="stockId" :page-size="5" />
       </div>
     </div>
   </div>
