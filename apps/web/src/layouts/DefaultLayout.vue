@@ -38,6 +38,7 @@ const ICONS = {
   institutional: 'M3 21h18M5 21V9l7-5 7 5v12M9 21v-6h6v6',
   margin: 'M12 3v18M17 6H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6',
   screener: 'M4 5h16l-6 7v6l-4 2v-8z',
+  brokers: 'M4 21V10l8-6 8 6v11M9 21v-5h6v5M4 13h16',
   more: 'M5 12h.01M12 12h.01M19 12h.01',
 }
 
@@ -49,6 +50,7 @@ const navItems = [
   { name: 'institutional', label: '法人動向', short: '法人', icon: ICONS.institutional },
   { name: 'margin', label: '融資融券', short: '融資券', icon: ICONS.margin },
   { name: 'screener', label: '選股器', short: '選股', icon: ICONS.screener },
+  { name: 'brokers', label: '分點動向', short: '分點', icon: ICONS.brokers },
 ]
 // 手機底部列放前四項，其餘收進「更多」
 const bottomItems = navItems.slice(0, 4)

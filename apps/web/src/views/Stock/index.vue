@@ -46,7 +46,7 @@ const chipView = ref<ChipView>('institutional')
 const chipViews: { key: ChipView; label: string }[] = [
   { key: 'institutional', label: '三大法人' },
   { key: 'margin', label: '融資融券' },
-  // 分點進出屬 Phase 3
+  { key: 'broker', label: '分點進出' },
 ]
 
 // 總覽「→」導向：籌碼類鍵映射到 chips 子頁籤；不在頁籤列表的鍵直接忽略
@@ -71,7 +71,7 @@ async function loadBroker(): Promise<void> {
     broker.value = await stockApi.getBrokerRanking({ stockId: stockId.value, limit: 15 })
     concentration.value = await stockApi.getBrokerConcentration({ stockId: stockId.value }).catch(() => null)
   } catch {
-    broker.value = { stockId: stockId.value, date: null, topBuy: [], topSell: [] }
+    broker.value = { stockId: stockId.value, date: null, topBuy: [], topSell: [], queued: false }
   } finally {
     brokerLoading.value = false
   }
@@ -694,16 +694,18 @@ const tabs: { key: TabKey; label: string }[] = [
         <!-- 分點進出 -->
         <div v-else>
           <div v-if="brokerLoading">
-            <p class="mb-3 text-center text-xs text-gray-400">
-              首次查詢需即時爬取分點資料，約需 10 秒，請稍候…
-            </p>
             <LoadingSkeleton type="table" />
           </div>
           <div
             v-else-if="!broker || (!broker.topBuy.length && !broker.topSell.length)"
-            class="py-8 text-center text-sm text-gray-400"
+            class="py-8 text-center text-sm text-gray-500"
           >
-            無分點資料
+            <template v-if="broker?.queued">
+              這檔還沒有分點資料，已排入抓取，約 1–2 分鐘後重新整理即可看到。
+            </template>
+            <template v-else>
+              無分點資料（分點資料來自證交所，僅提供上市股票）
+            </template>
           </div>
           <div v-else>
             <p class="mb-2 text-xs text-gray-400">

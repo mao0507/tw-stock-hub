@@ -1,5 +1,6 @@
 """任務註冊表：job 名稱 → 執行函式。排程時間寫在 crawler/crontab。"""
 
+import re
 from collections.abc import Awaitable, Callable
 
 from crawlers.quote.market_index import MarketIndexCrawler
@@ -71,6 +72,21 @@ JOBS: dict[str, JobFn] = {
 JOB_BY_CRAWLER: dict[str, str] = {
     fn.crawler_class: name for name, fn in JOBS.items() if hasattr(fn, "crawler_class")
 }
+
+
+# 帶參數的一次性任務（name:arg），目前只有分點按需爬取（api 查無資料時寫入 pending_jobs）
+PARAM_JOBS: dict[str, Callable[[str], Awaitable[int | None]]] = {
+    "broker": lambda stock_id: BrokerCrawler([stock_id]).run(),
+}
+_PARAM_ARG = re.compile(r"^[0-9A-Z]{4,6}$")
+
+
+def resolve_param_job(name: str) -> tuple[str, str] | None:
+    """'broker:2454' → ('broker', '2454')；格式不符或未知任務回 None。"""
+    job, sep, arg = name.partition(":")
+    if not sep or job not in PARAM_JOBS or not _PARAM_ARG.match(arg):
+        return None
+    return job, arg
 
 
 def resolve_job(name: str) -> str | None:

@@ -15,7 +15,7 @@ from config import settings
 from db.connection import engine, get_session
 from monitor.logger import setup_logger
 from pipeline.notify import publisher
-from scheduler.jobs import JOBS, resolve_job
+from scheduler.jobs import JOBS, PARAM_JOBS, resolve_job, resolve_param_job
 
 # 先把一筆 pending 改成 running 再執行，避免兩次輪詢重複撿到同一筆
 CLAIM_SQL = text("""
@@ -34,6 +34,12 @@ FINISH_SQL = text("""
 
 async def run_one(name: str) -> int | None:
     """執行任務；name 可為任務名稱（twse_daily）或爬蟲類別名稱（TWSEDailyQuoteCrawler）。"""
+    param = resolve_param_job(name)
+    if param:
+        job, arg = param
+        count = await PARAM_JOBS[job](arg)
+        await publisher.publish_done(job, count=count or 0)
+        return count
     job_name = resolve_job(name)
     if job_name is None:
         raise ValueError(f"未知的 job: {name}（可用：{', '.join(sorted(JOBS))}）")

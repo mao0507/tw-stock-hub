@@ -21,10 +21,12 @@ import re
 import httpx
 from bs4 import BeautifulSoup
 from loguru import logger
+from sqlalchemy import text
 
 from config import settings
 from crawlers.base.base_crawler import BaseCrawler
 from crawlers.base.http_client import BASE_HEADERS, USER_AGENTS
+from db.connection import get_session
 from pipeline.writer import DataWriter
 from pipeline.notify import publisher
 
@@ -102,28 +104,66 @@ def aggregate_by_broker(
     return agg
 
 
-def _solve_captcha(image_bytes: bytes) -> str:
-    """OCR 驗證碼。需 ddddocr（onnxruntime）。缺套件時拋出明確錯誤。"""
+def decode_bsr_csv(raw: bytes) -> str:
+    """BSR 目前回 UTF-8（含 BOM）；舊版為 big5。先試 UTF-8 再退回 big5。"""
     try:
-        import ddddocr  # type: ignore
-    except ImportError as e:  # pragma: no cover - 環境相依
-        raise RuntimeError(
-            "BrokerCrawler 需要 ddddocr 解驗證碼，請確認已安裝（uv add ddddocr）"
-        ) from e
+        return raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        return raw.decode("big5", errors="ignore")
 
-    ocr = ddddocr.DdddOcr(show_ad=False)
-    code = ocr.classification(image_bytes)
-    return re.sub(r"[^A-Za-z0-9]", "", code)
+
+CAPTCHA_LEN = 5
+_ocr = None
+
+
+def normalize_captcha(raw: str) -> str | None:
+    """BSR 驗證碼為 5 碼大寫英數；OCR 字形對但常給小寫 → 轉大寫。長度不符回 None（不送出，省請求）。"""
+    code = re.sub(r"[^A-Za-z0-9]", "", raw or "").upper()
+    return code if len(code) == CAPTCHA_LEN else None
+
+
+def _solve_captcha(image_bytes: bytes) -> str | None:
+    """OCR 驗證碼。需 ddddocr（onnxruntime）。缺套件時拋出明確錯誤。"""
+    global _ocr
+    if _ocr is None:
+        try:
+            import ddddocr  # type: ignore
+        except ImportError as e:  # pragma: no cover - 環境相依
+            raise RuntimeError(
+                "BrokerCrawler 需要 ddddocr 解驗證碼，請確認已安裝（uv add ddddocr）"
+            ) from e
+        _ocr = ddddocr.DdddOcr(show_ad=False)
+    return normalize_captcha(_ocr.classification(image_bytes))
 
 
 class BrokerCrawler(BaseCrawler):
     crawler_name = "BrokerCrawler"
     referer_url = MENU_URL
 
+    def __init__(self, stocks: list[str] | None = None) -> None:
+        """stocks：指定股票（按需爬取）；未指定則用追蹤清單 BROKER_WATCH_STOCKS。"""
+        super().__init__()
+        self._stocks = stocks
+        self._trade_date = None
+
+    async def _prepare(self) -> list[str]:
+        """BSR 只提供「最近交易日」且為上市股 → 交易日取最新行情日，清單只留上市。"""
+        wanted = self._stocks or settings.broker_watch_list
+        async with get_session() as session:
+            self._trade_date = (await session.execute(text(
+                "SELECT MAX(date) FROM daily_quotes WHERE date <= :d"), {"d": self.target_date})).scalar()
+            r = await session.execute(text(
+                "SELECT id FROM stocks WHERE id = ANY(:ids) AND market = 'TWSE' AND is_active"), {"ids": wanted})
+            listed = {row[0] for row in r.fetchall()}
+        skipped = [s for s in wanted if s not in listed]
+        if skipped:
+            logger.info(f"[{self.crawler_name}] 非上市或不存在（BSR 無資料），略過：{','.join(skipped)}")
+        return [s for s in wanted if s in listed]
+
     async def crawl(self) -> int:
-        stocks = settings.broker_watch_list
-        if not stocks:
-            logger.warning(f"[{self.crawler_name}] 無追蹤股票，跳過")
+        stocks = await self._prepare()
+        if not stocks or self._trade_date is None:
+            logger.warning(f"[{self.crawler_name}] 無可爬股票或無行情日，跳過")
             return 0
 
         total = 0
@@ -136,7 +176,7 @@ class BrokerCrawler(BaseCrawler):
                 logger.warning(f"[{self.crawler_name}] {stock_id} 失敗: {e}")
             await self._random_delay()
 
-        await publisher.publish_done(self.crawler_name, self.target_date, total)
+        await publisher.publish_done(self.crawler_name, self._trade_date, total)
         return total
 
     async def _crawl_one(self, stock_id: str, max_captcha_retry: int = 5) -> int:
@@ -160,27 +200,26 @@ class BrokerCrawler(BaseCrawler):
         menu = await client.get(MENU_URL)
         soup = BeautifulSoup(menu.text, "lxml")
 
-        def field(name: str) -> str:
-            el = soup.find("input", {"name": name})
-            return el.get("value", "") if el else ""
-
         img = soup.find("img", src=re.compile("CaptchaImage"))
         if not img or not img.get("src"):
             raise RuntimeError("找不到驗證碼圖片")
         captcha_resp = await client.get(f"{BSR_BASE}/{img['src'].lstrip('./')}")
         code = _solve_captcha(captcha_resp.content)
-        if len(code) < 4:
+        if code is None:
             return None
 
+        # 所有隱藏欄位都要帶（少了 __VIEWSTATEENCRYPTED 等會被導到錯誤頁）
         form = {
-            "__VIEWSTATE": field("__VIEWSTATE"),
-            "__VIEWSTATEGENERATOR": field("__VIEWSTATEGENERATOR"),
-            "__EVENTVALIDATION": field("__EVENTVALIDATION"),
+            el["name"]: el.get("value", "")
+            for el in soup.find_all("input")
+            if el.get("name") and el.get("type") in ("hidden", "text")
+        }
+        form.update({
             "RadioButton_Normal": "RadioButton_Normal",
             "TextBox_Stkno": stock_id,
             "CaptchaControl1": code,
             "btnOK": "查詢",
-        }
+        })
         post = await client.post(MENU_URL, data=form)
         post_soup = BeautifulSoup(post.text, "lxml")
 
@@ -189,7 +228,7 @@ class BrokerCrawler(BaseCrawler):
             return None  # 驗證碼錯誤或查無資料 → 重試
 
         content = await client.get(f"{BSR_BASE}/{link['href'].lstrip('./')}")
-        csv_text = content.content.decode("big5", errors="ignore")
+        csv_text = decode_bsr_csv(content.content)
         rows = parse_bsr_rows(csv_text)
         return rows or None
 
@@ -200,7 +239,7 @@ class BrokerCrawler(BaseCrawler):
         brokers = aggregate_by_broker(rows)
         agg_records = [
             {
-                "date": self.target_date,
+                "date": self._trade_date,
                 "stock_id": stock_id,
                 "broker_name": name[:60],
                 "buy": v["buy"],
@@ -212,7 +251,7 @@ class BrokerCrawler(BaseCrawler):
         # 明細表：每券商每價位一筆
         detail_records = [
             {
-                "date": self.target_date,
+                "date": self._trade_date,
                 "stock_id": stock_id,
                 "broker_name": name[:60],
                 "price": price,

@@ -86,6 +86,8 @@ export interface BrokerRanking {
   date: string | null
   topBuy: BrokerItem[]
   topSell: BrokerItem[]
+  /** 查無資料且已排入按需爬取（上市股） */
+  queued: boolean
 }
 
 export interface BrokerTop {
