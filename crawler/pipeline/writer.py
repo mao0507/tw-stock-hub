@@ -117,7 +117,6 @@ class DataWriter:
         if not records:
             return 0
         from sqlalchemy.dialects.postgresql import insert
-        from sqlalchemy import func
         table = DividendModel.__table__
         async with get_session() as session:
             stmt = insert(table).values(records)
@@ -126,11 +125,11 @@ class DataWriter:
                 set_={
                     "cash_dividend": stmt.excluded["cash_dividend"],
                     "stock_dividend": stmt.excluded["stock_dividend"],
-                    # TWSE 快照無除息日 → COALESCE 保留 FinMind 既有值
-                    "ex_dividend_date": func.coalesce(
-                        stmt.excluded["ex_dividend_date"], table.c.ex_dividend_date
-                    ),
+                    "ex_dividend_date": stmt.excluded["ex_dividend_date"],
                 },
+                # TWSE 快照無除息日、且會把季配壓成同一期別 → 不可覆蓋 FinMind 已寫入（有除息日）的期別
+                where=(stmt.excluded["ex_dividend_date"].isnot(None))
+                | (table.c.ex_dividend_date.is_(None)),
             )
             result = await session.execute(stmt)
             return result.rowcount or len(records)

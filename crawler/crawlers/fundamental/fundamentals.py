@@ -1,4 +1,4 @@
-"""基本面爬蟲：月營收、財報(EPS/獲利)、股利、估值(PE/PB)、大戶持股、除權息行事曆。
+"""基本面爬蟲：月營收、財報(EPS/獲利)、股利、大戶持股、除權息行事曆（估值見 valuation.py）。
 
 資料源：TWSE OpenAPI（openapi.twse.com.tw）+ TDCC OpenData（集保戶股權分散）。
 皆為「最新快照」端點，crawl() 抓全部上市公司寫入。上市(TWSE)為主。
@@ -17,7 +17,6 @@ from crawlers.base.base_crawler import BaseCrawler
 from crawlers.fundamental.ytd import FIELDS as YTD_FIELDS, to_single_quarter
 from db.connection import get_session
 from pipeline.writer import DataWriter
-from pipeline.notify import publisher
 
 OPENAPI = "https://openapi.twse.com.tw/v1"
 TDCC_URL = "https://opendata.tdcc.com.tw/getOD.ashx?id=1-5"
@@ -168,32 +167,6 @@ class DividendCrawler(BaseCrawler):
             }
         count = await DataWriter.write_dividends(list(dedup.values()))
         logger.info(f"[{self.crawler_name}] {count} 筆股利")
-        return count
-
-
-class ValuationCrawler(BaseCrawler):
-    crawler_name = "ValuationCrawler"
-
-    async def crawl(self) -> int:
-        data = await _fetch(f"{OPENAPI}/exchangeReport/BWIBBU_ALL")
-        records = []
-        d = None
-        for r in data:
-            sid = str(r.get("Code", "")).strip()
-            if not sid.isdigit():
-                continue
-            d = _roc_to_date(r.get("Date", "")) or d
-            records.append({
-                "date": d,
-                "stock_id": sid,
-                "pe": _num(r.get("PEratio")),
-                "pb": _num(r.get("PBratio")),
-                "dividend_yield": _num(r.get("DividendYield")),
-            })
-        records = [x for x in records if x["date"]]
-        count = await DataWriter.write_valuations(records)
-        await publisher.publish_done(self.crawler_name, d or self.target_date, count)
-        logger.info(f"[{self.crawler_name}] {count} 筆估值 @ {d}")
         return count
 
 

@@ -6,6 +6,9 @@
   uv run python scripts/backfill_history.py
   uv run python scripts/backfill_history.py --years 1
   uv run python scripts/backfill_history.py --from 2020-01-01 --to 2025-01-01
+  # 上市、上櫃是不同主機，可各開一個 process 並行（各自遵守該站限速）
+  uv run python scripts/backfill_history.py --years 3 --only twse_daily,institutional_twse,margin_twse,market_index,sector,valuation
+  uv run python scripts/backfill_history.py --years 3 --only tpex_daily,institutional_tpex,margin_tpex,valuation_tpex
 """
 import argparse
 import asyncio
@@ -25,14 +28,22 @@ from crawlers.quote.institutional_twse import InstitutionalCrawler
 from crawlers.quote.institutional_tpex import InstitutionalTPEXCrawler
 from crawlers.quote.margin_twse import MarginTradingCrawler
 from crawlers.quote.margin_tpex import MarginTradingTPEXCrawler
+from crawlers.quote.market_index import MarketIndexCrawler
+from crawlers.quote.sector import SectorCrawler
+from crawlers.fundamental.valuation import ValuationCrawler, ValuationTPEXCrawler
 
+# 任務名稱與 scheduler/jobs.py 一致
 CRAWLERS_ORDER = [
-    ("上市行情", TWSEDailyQuoteCrawler),
-    ("上櫃行情", TPEXDailyQuoteCrawler),
-    ("上市三大法人", InstitutionalCrawler),
-    ("上櫃三大法人", InstitutionalTPEXCrawler),
-    ("上市融資融券", MarginTradingCrawler),
-    ("上櫃融資融券", MarginTradingTPEXCrawler),
+    ("twse_daily", TWSEDailyQuoteCrawler),
+    ("tpex_daily", TPEXDailyQuoteCrawler),
+    ("institutional_twse", InstitutionalCrawler),
+    ("institutional_tpex", InstitutionalTPEXCrawler),
+    ("margin_twse", MarginTradingCrawler),
+    ("margin_tpex", MarginTradingTPEXCrawler),
+    ("market_index", MarketIndexCrawler),
+    ("sector", SectorCrawler),
+    ("valuation", ValuationCrawler),
+    ("valuation_tpex", ValuationTPEXCrawler),
 ]
 
 
@@ -67,7 +78,15 @@ async def main() -> None:
     parser.add_argument("--years", type=int, default=2, help="回填年數（預設 2 年）")
     parser.add_argument("--from", dest="from_date", help="起始日期（YYYY-MM-DD）")
     parser.add_argument("--to", dest="to_date", help="結束日期（YYYY-MM-DD）")
+    parser.add_argument("--only", help="只跑指定任務（逗號分隔），例如 twse_daily,valuation")
     args = parser.parse_args()
+    crawlers = CRAWLERS_ORDER
+    if args.only:
+        wanted = set(args.only.split(","))
+        unknown = wanted - {n for n, _ in CRAWLERS_ORDER}
+        if unknown:
+            parser.error(f"未知任務：{', '.join(sorted(unknown))}")
+        crawlers = [(n, c) for n, c in CRAWLERS_ORDER if n in wanted]
 
     setup_logger("INFO")
 
@@ -76,14 +95,14 @@ async def main() -> None:
         start = date.fromisoformat(args.from_date)
         end = date.fromisoformat(args.to_date)
     else:
-        start = date(today.year - args.years, today.month, today.day)
+        start = today - timedelta(days=365 * args.years)  # 用 replace 會在 2/29 出錯
         end = today
 
     trading_days = get_trading_days(start, end)
     total = len(trading_days)
 
     logger.info(f"回填期間：{start} ~ {end}，共 {total} 個交易日")
-    logger.info("注意：此腳本約需 30~60 分鐘，請確認資料庫連線正常")
+    logger.info(f"任務：{', '.join(n for n, _ in crawlers)}（每日每任務約 3~5 秒）")
     if sys.stdin.isatty():
         print("按 Enter 開始，Ctrl+C 取消...")
         input()
@@ -92,14 +111,14 @@ async def main() -> None:
 
     stats: dict[str, dict[str, int]] = {
         name: {"success": 0, "failed": 0}
-        for name, _ in CRAWLERS_ORDER
+        for name, _ in crawlers
     }
 
     with tqdm(total=total, desc="回填進度", unit="日") as pbar:
         for d in trading_days:
             pbar.set_postfix(date=str(d))
 
-            for name, crawler_class in CRAWLERS_ORDER:
+            for name, crawler_class in crawlers:
                 ok = await run_one_day(crawler_class, d)
                 if ok:
                     stats[name]["success"] += 1

@@ -236,7 +236,7 @@ export function registerFundamentalRoutes(app: OpenAPIHono, db: Db) {
           .from(valuations)
           .where(and(eq(valuations.stockId, id), isNotNull(valuations.pe)))
           .orderBy(desc(valuations.date))
-          .limit(250),
+          .limit(750), // 約 3 年交易日
       ])
       const ttmEps = calcTtmEps(fin)
 

@@ -10,6 +10,7 @@
 45 14 * * 1-5      python run_job.py tpex_daily
 0  15 * * 1-5      python run_job.py market_index
 30 15 * * 1-5      python run_job.py valuation
+32 15 * * 1-5      python run_job.py valuation_tpex
 5  16 * * 1-5      python run_job.py sector
 20 16 * * 1-5      python run_job.py exdividend
 30 16 * * 1-5      python run_job.py institutional_twse

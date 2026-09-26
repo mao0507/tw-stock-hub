@@ -61,9 +61,12 @@ pnpm --filter @tw-stock-hub/web dev          # :3000，/api 代理到 :3001
 cd crawler && uv run pytest                  # crawler 測試
 cd crawler && uv run python run_job.py twse_daily
 
-# 首次啟動灌資料（容器內執行；TWSE 有頻率限制，勿同時跑多支）
-docker compose exec crawler python scripts/backfill_history.py --from 2026-08-01 --to 2026-09-24  # 行情/法人/融資
-docker compose exec crawler python scripts/backfill_market.py                                     # 大盤/類股/估值（依已有行情日）
+# 首次啟動灌資料（容器內執行；同一站台勿同時跑多支，上市/上櫃不同主機可並行）
+# 逐日：行情/法人/融資/大盤/類股/估值（PE、PB、殖利率）
+docker compose exec -d crawler sh -c 'python scripts/backfill_history.py --years 3 --only twse_daily,institutional_twse,margin_twse,market_index,sector,valuation > logs/backfill_twse.log 2>&1'
+docker compose exec -d crawler sh -c 'python scripts/backfill_history.py --years 3 --only tpex_daily,institutional_tpex,margin_tpex,valuation_tpex > logs/backfill_tpex.log 2>&1'
+# 逐檔（FinMind，歷史只能從這補）：股利含除息日 → 財報 → 月營收 → 資產負債表；可中斷續跑
+docker compose exec -d crawler sh -c 'python scripts/backfill_finmind.py > logs/backfill_finmind.log 2>&1'
 docker compose exec crawler python run_job.py exdividend && docker compose exec crawler python run_job.py dividend
 
 docker compose up -d --build                 # 全部（需先 cp .env.example .env 並填值）
