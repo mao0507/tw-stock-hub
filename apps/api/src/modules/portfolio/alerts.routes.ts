@@ -75,10 +75,8 @@ export function createAlertRoutes(db: Db) {
     const input = c.req.valid('json')
     const name = await repo.stockName(input.stockId)
     if (!name) return c.json({ error: `查無股票 ${input.stockId}` }, 404)
-    if ((await repo.count(uid(c))) >= MAX_RULES_PER_USER) {
-      return c.json({ error: `提醒規則最多 ${MAX_RULES_PER_USER} 條` }, 409)
-    }
-    return c.json(await repo.create(uid(c), input, name), 201)
+    const created = await repo.create(uid(c), input, name)
+    return created ? c.json(created, 201) : c.json({ error: `提醒規則最多 ${MAX_RULES_PER_USER} 條` }, 409)
   })
 
   app.openapi(routes.remove, async (c) => {

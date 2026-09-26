@@ -1,6 +1,5 @@
 """Yahoo 股市個股新聞：成交值前 MAX_STOCKS 檔的個股 RSS（含發布時間）。"""
 
-from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 
 import feedparser
@@ -23,10 +22,11 @@ def parse_yahoo_entry(entry: dict, stock_id: str) -> dict | None:
     url = str(entry.get("link") or "").strip()
     if not title or not url:
         return None
+    # 沒有發布時間就略過：唯一鍵含 published_at，用抓取時間會每次重複寫入
     try:
         published = parsedate_to_datetime(entry["published"])
     except (KeyError, TypeError, ValueError):
-        published = datetime.now(timezone.utc)
+        return None
     return {
         "title": title,
         "url": url,

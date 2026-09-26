@@ -74,6 +74,15 @@ describe('分點 API', () => {
     expect((await get('/broker/ranking?stockId=9999')).status).toBe(404)
   })
 
+  it('ranking：排隊中的按需任務已達上限時不再排入', async () => {
+    await t.admin`
+      INSERT INTO stocks.pending_jobs (job_name)
+      SELECT 'broker:' || (8000 + g)::text FROM generate_series(1, 20) g`
+    await seedStock(t.admin, '2412', '中華電')
+    expect((await get('/broker/ranking?stockId=2412')).body.queued).toBe(false)
+    await t.admin`DELETE FROM stocks.pending_jobs WHERE job_name LIKE 'broker:8%'`
+  })
+
   it('overview：最新日各追蹤股的分點數與前三大買賣超', async () => {
     const { body } = await get('/broker/overview')
     expect(body.date).toBe(D2)

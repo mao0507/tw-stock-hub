@@ -19,7 +19,11 @@ async function load(): Promise<void> {
 }
 
 async function markAll(): Promise<void> {
-  await alertsApi.markRead()
+  try {
+    await alertsApi.markRead()
+  } catch (e) {
+    console.warn('[NotificationBell] markRead failed', e)
+  }
   await load()
 }
 

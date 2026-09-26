@@ -1,5 +1,5 @@
 import { createRoute, type OpenAPIHono, z } from '@hono/zod-openapi'
-import { and, asc, eq, lte } from 'drizzle-orm'
+import { and, asc, eq, gte, lte } from 'drizzle-orm'
 import type { Db } from '../../db/client.js'
 import { dailyQuotes } from '../../db/schema/stocks.js'
 import { CalendarDate, cached, ErrorBody, findActiveStock, json, NOT_FOUND, notFoundBody, StockId } from './shared.js'
@@ -9,6 +9,7 @@ import { CalendarDate, cached, ErrorBody, findActiveStock, json, NOT_FOUND, notF
 // 不計手續費與稅；均線以 from 之前的資料暖身，只在 [from, to] 內下單。
 
 const round2 = (v: number) => Math.round(v * 100) / 100
+const shiftDays = (d: string, n: number) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10)
 
 const Query = z
   .object({
@@ -126,7 +127,12 @@ export function registerBacktestRoutes(app: OpenAPIHono, db: Db) {
       const rows = await db
         .select({ date: dailyQuotes.date, open: dailyQuotes.open, close: dailyQuotes.close })
         .from(dailyQuotes)
-        .where(and(eq(dailyQuotes.stockId, q.stockId), q.to ? lte(dailyQuotes.date, q.to) : undefined))
+        .where(and(
+          eq(dailyQuotes.stockId, q.stockId),
+          q.to ? lte(dailyQuotes.date, q.to) : undefined,
+          // 有 from 時只多讀暖身所需的資料（慢線天數 × 2 個日曆日綽綽有餘），避免掃全部 chunk
+          q.from ? gte(dailyQuotes.date, shiftDays(q.from, -q.slowPeriod * 2 - 14)) : undefined,
+        ))
         .orderBy(asc(dailyQuotes.date))
       const bars = rows.map((b) => ({ date: b.date, open: Number(b.open), close: Number(b.close) }))
       return {

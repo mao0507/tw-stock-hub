@@ -115,6 +115,13 @@ describe('盤後評估', () => {
     expect((await notifications()).items).toHaveLength(2)
   })
 
+  it('行情任務回報 0 筆（休市）時不評估', async () => {
+    await create('2330', 'price_above', 100)
+    await t.admin`SELECT pg_notify('crawler_done', '{"crawler":"twse_daily","count":0}')`
+    await new Promise((r) => setTimeout(r, 300))
+    expect((await notifications()).items).toHaveLength(0)
+  })
+
   it('停用的規則不評估；其他爬蟲完成不觸發', async () => {
     const a = await create('2330', 'price_above', 100)
     await t.admin`UPDATE members.alert_rules SET is_active = FALSE WHERE id = ${a.id}`

@@ -13,10 +13,11 @@ watch(() => props.stockId, async (id) => {
   data.value = null
   failed.value = false
   try {
-    data.value = await stockApi.getIndicators(id, 21)
+    const res = await stockApi.getIndicators(id, 21)
+    if (id === props.stockId) data.value = res // 快速切換股票時丟棄舊回應
   } catch (e) {
     console.warn('[TechnicalSummary] load failed', e)
-    failed.value = true
+    if (id === props.stockId) failed.value = true
   }
 }, { immediate: true })
 

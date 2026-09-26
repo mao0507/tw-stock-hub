@@ -9,6 +9,7 @@ import { CalendarDate, cached, ErrorBody, findActiveStock, json, notFoundBody, S
 const BrokerName = z.string().min(1).max(60)
 const Limit = z.coerce.number().int().min(1).max(50).default(15)
 const ON_DEMAND_COOLDOWN_MIN = 30
+const MAX_ON_DEMAND_PENDING = 20
 
 const Item = z.object({ brokerName: z.string(), buy: z.number(), sell: z.number(), net: z.number(), tag: z.string().nullable() })
 const Top = z.object({ brokerName: z.string(), net: z.number(), tag: z.string().nullable() })
@@ -106,18 +107,27 @@ async function latestDate(db: Db, stockId?: string): Promise<string | null> {
   return r?.d ?? null
 }
 
-/** 上市股排入按需爬取（冷卻時間內已排過就不重複排）；回傳是否在佇列中。上櫃 BSR 無資料 → false */
+/**
+ * 上市股排入按需爬取；回傳是否在佇列中（上櫃 BSR 無資料 → false）。
+ * 同一檔 30 分鐘內不重複排；全站排隊中的按需任務上限 MAX_ON_DEMAND_PENDING，避免被批量觸發。
+ * advisory lock 讓「檢查＋寫入」在併發請求下也只排一次。
+ */
 async function enqueueOnDemand(db: Db, stockId: string, market: string): Promise<boolean> {
   if (market !== 'TWSE') return false
   const job = `broker:${stockId}`
-  await db.execute(sql`
-    INSERT INTO stocks.pending_jobs (job_name)
-    SELECT ${job}
-    WHERE NOT EXISTS (
-      SELECT 1 FROM stocks.pending_jobs
-      WHERE job_name = ${job} AND created_at > NOW() - make_interval(mins => ${ON_DEMAND_COOLDOWN_MIN})
-    )`)
-  return true
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('broker_on_demand'))`)
+    const [r] = await tx.execute<{ recent: boolean; pending: number }>(sql`
+      SELECT
+        EXISTS (SELECT 1 FROM stocks.pending_jobs WHERE job_name = ${job}
+                AND created_at > NOW() - make_interval(mins => ${ON_DEMAND_COOLDOWN_MIN})) AS recent,
+        (SELECT COUNT(*)::int FROM stocks.pending_jobs
+         WHERE job_name LIKE 'broker:%' AND status IN ('pending', 'running')) AS pending`)
+    if (r?.recent) return true
+    if ((r?.pending ?? 0) >= MAX_ON_DEMAND_PENDING) return false
+    await tx.execute(sql`INSERT INTO stocks.pending_jobs (job_name) VALUES (${job})`)
+    return true
+  })
 }
 
 export function registerBrokerRoutes(app: OpenAPIHono, db: Db) {

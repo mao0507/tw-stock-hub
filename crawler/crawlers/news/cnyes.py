@@ -17,14 +17,15 @@ TAG_RE = re.compile(r"<[^>]+>")
 
 def parse_cnyes(raw: dict) -> dict | None:
     title = str(raw.get("title") or "").strip()
-    if not title or not raw.get("newsId"):
+    # 沒有發布時間就略過：唯一鍵含 published_at，用替代時間會重複寫入
+    if not title or not raw.get("newsId") or not raw.get("publishAt"):
         return None
     # content 是跳脫過的 HTML → 還原後去標籤，當摘要
     text = TAG_RE.sub("", html.unescape(str(raw.get("summary") or raw.get("content") or ""))).strip()
     return {
         "title": title,
         "url": NEWS_URL.format(id=raw["newsId"]),
-        "published_at": datetime.fromtimestamp(int(raw.get("publishAt") or 0), tz=timezone.utc),
+        "published_at": datetime.fromtimestamp(int(raw["publishAt"]), tz=timezone.utc),
         "summary": text[:500] or None,
         "stock_ids": [str(s) for s in raw.get("stock") or []],
     }

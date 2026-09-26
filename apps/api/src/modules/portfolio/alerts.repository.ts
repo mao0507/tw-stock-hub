@@ -47,14 +47,15 @@ export function createAlertsRepository(db: Db) {
       return s?.name ?? null
     },
 
-    async count(userId: string) {
-      const [r] = await db.select({ n: sql<number>`count(*)::int` }).from(alertRules).where(eq(alertRules.userId, userId))
-      return r?.n ?? 0
-    },
-
+    /** 在上限內才新增；以使用者為單位的 advisory lock 讓併發新增也不會超過上限。超過回 null */
     async create(userId: string, input: { stockId: string; alertType: AlertType; threshold: number }, stockName: string) {
-      const [r] = await db.insert(alertRules).values({ userId, ...input, threshold: String(input.threshold) }).returning()
-      return toItem({ ...r!, stockName })
+      return db.transaction(async (tx) => {
+        await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`alerts:${userId}`}))`)
+        const [cnt] = await tx.select({ n: sql<number>`count(*)::int` }).from(alertRules).where(eq(alertRules.userId, userId))
+        if ((cnt?.n ?? 0) >= MAX_RULES_PER_USER) return null
+        const [r] = await tx.insert(alertRules).values({ userId, ...input, threshold: String(input.threshold) }).returning()
+        return toItem({ ...r!, stockName })
+      })
     },
 
     async remove(userId: string, id: string) {

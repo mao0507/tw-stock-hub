@@ -6,7 +6,7 @@ KD 與 MACD 是遞迴式，增量窗口內重新起算，與全量結果只差�
 """
 
 import math
-from datetime import date
+from datetime import date, timedelta
 
 from loguru import logger
 from sqlalchemy import text
@@ -112,11 +112,13 @@ async def _stock_ids(session) -> list[str]:
 
 
 async def _quotes(session, stock_id: str, until: date, limit: int | None) -> list[dict]:
+    # 每日模式帶日期下限（WINDOW 交易日約 1.1 年），避免 hypertable 掃過全部 chunk
+    since = until - timedelta(days=500) if limit else date(2000, 1, 1)
     sql = """
         SELECT date, high, low, close, volume FROM daily_quotes
-        WHERE stock_id = :s AND date <= :d ORDER BY date DESC
+        WHERE stock_id = :s AND date BETWEEN :a AND :d ORDER BY date DESC
     """ + (" LIMIT :n" if limit else "")
-    r = await session.execute(text(sql), {"s": stock_id, "d": until, "n": limit})
+    r = await session.execute(text(sql), {"s": stock_id, "a": since, "d": until, "n": limit})
     return [dict(row._mapping) for row in reversed(r.fetchall())]
 
 

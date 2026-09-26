@@ -15,6 +15,7 @@ ponytail: 步驟 1~4 的 HTML/CSV 細節依 BSR 現況，需對線上實測校�
 
 import asyncio
 import csv
+from datetime import timedelta
 import io
 import re
 
@@ -112,6 +113,13 @@ def decode_bsr_csv(raw: bytes) -> str:
         return raw.decode("big5", errors="ignore")
 
 
+def pick_trade_date(total_buy: int, candidates: list[tuple]) -> object | None:
+    """BSR 不標日期：各分點買進股數合計 = 當日成交股數。從近期 (date, volume) 挑成交量最接近者。"""
+    if not candidates:
+        return None
+    return min(candidates, key=lambda c: abs(int(c[1]) - total_buy))[0]
+
+
 CAPTCHA_LEN = 5
 _ocr = None
 
@@ -145,9 +153,12 @@ class BrokerCrawler(BaseCrawler):
         super().__init__()
         self._stocks = stocks
         self._trade_date = None
+        if stocks:
+            # 按需爬取另記名稱，失敗不計入排程任務的連續失敗告警
+            self.crawler_name = "BrokerOnDemandCrawler"
 
     async def _prepare(self) -> list[str]:
-        """BSR 只提供「最近交易日」且為上市股 → 交易日取最新行情日，清單只留上市。"""
+        """BSR 只提供上市股；清單只留上市。_trade_date 為最新行情日（通知用），實際寫入日期逐檔比對成交量決定。"""
         wanted = self._stocks or settings.broker_watch_list
         async with get_session() as session:
             self._trade_date = (await session.execute(text(
@@ -232,14 +243,28 @@ class BrokerCrawler(BaseCrawler):
         rows = parse_bsr_rows(csv_text)
         return rows or None
 
+    async def _trade_date_of(self, stock_id: str, total_buy: int):
+        async with get_session() as session:
+            r = await session.execute(text(
+                """
+                SELECT date, volume FROM daily_quotes
+                WHERE stock_id = :s AND date BETWEEN :a AND :b ORDER BY date DESC LIMIT 5
+                """
+            ), {"s": stock_id, "a": self.target_date - timedelta(days=20), "b": self.target_date})
+            return pick_trade_date(total_buy, [(row[0], row[1]) for row in r.fetchall()])
+
     async def _write(
         self, stock_id: str, rows: dict[tuple[str, float], dict[str, int]]
     ) -> int:
         # 加總表：每券商一筆
         brokers = aggregate_by_broker(rows)
+        trade_date = await self._trade_date_of(stock_id, sum(v["buy"] for v in brokers.values()))
+        if trade_date is None:
+            logger.warning(f"[{self.crawler_name}] {stock_id} 近期無行情可比對交易日，不寫入")
+            return 0
         agg_records = [
             {
-                "date": self._trade_date,
+                "date": trade_date,
                 "stock_id": stock_id,
                 "broker_name": name[:60],
                 "buy": v["buy"],
@@ -251,7 +276,7 @@ class BrokerCrawler(BaseCrawler):
         # 明細表：每券商每價位一筆
         detail_records = [
             {
-                "date": self._trade_date,
+                "date": trade_date,
                 "stock_id": stock_id,
                 "broker_name": name[:60],
                 "price": price,

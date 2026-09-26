@@ -37,9 +37,8 @@ async def run_one(name: str) -> int | None:
     param = resolve_param_job(name)
     if param:
         job, arg = param
-        count = await PARAM_JOBS[job](arg)
-        await publisher.publish_done(job, count=count or 0)
-        return count
+        # 帶參數任務由爬蟲自行發 NOTIFY，這裡不重複
+        return await PARAM_JOBS[job](arg)
     job_name = resolve_job(name)
     if job_name is None:
         raise ValueError(f"未知的 job: {name}（可用：{', '.join(sorted(JOBS))}）")

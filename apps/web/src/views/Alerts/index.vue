@@ -84,14 +84,23 @@ async function confirmRemove(): Promise<void> {
     await alertsApi.deleteAlert(removeTarget.value.id)
     removeTarget.value = null
     await load()
+  } catch (e) {
+    console.warn('[Alerts] delete failed', e)
+    loadError.value = '刪除失敗，請稍後再試'
+    removeTarget.value = null
   } finally {
     removeLoading.value = false
   }
 }
 
 async function reset(id: string): Promise<void> {
-  await alertsApi.resetAlert(id)
-  await load()
+  try {
+    await alertsApi.resetAlert(id)
+    await load()
+  } catch (e) {
+    console.warn('[Alerts] reset failed', e)
+    loadError.value = '重新啟用失敗，請稍後再試'
+  }
 }
 
 const fmtTime = (iso: string) => new Date(iso).toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })

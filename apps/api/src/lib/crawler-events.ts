@@ -18,12 +18,15 @@ export type CrawlerDoneHandlers = {
   onQuotes?: () => Promise<unknown>
 }
 
-function crawlerName(payload: string): string | null {
+function parsePayload(payload: string): { name: string | null; count: number | null } {
   try {
-    const parsed = JSON.parse(payload) as { crawler?: unknown }
-    return typeof parsed.crawler === 'string' ? parsed.crawler : null
+    const p = JSON.parse(payload) as { crawler?: unknown; count?: unknown }
+    return {
+      name: typeof p.crawler === 'string' ? p.crawler : null,
+      count: typeof p.count === 'number' ? p.count : null,
+    }
   } catch {
-    return null
+    return { name: null, count: null }
   }
 }
 
@@ -39,8 +42,9 @@ export async function startCrawlerDoneListener(
     console.info('[api] crawler_done', payload)
     responseCache.clear()
 
-    const name = crawlerName(payload)
-    if (name && QUOTE_CRAWLERS.has(name) && handlers.onQuotes) {
+    const { name, count } = parsePayload(payload)
+    // 行情筆數為 0（休市、尚未公布）不評估，免得拿前一交易日資料觸發剛建立或重設的提醒
+    if (name && QUOTE_CRAWLERS.has(name) && count !== 0 && handlers.onQuotes) {
       handlers.onQuotes().catch((err: unknown) => {
         console.error('[api] 行情更新後評估提醒失敗', err)
       })

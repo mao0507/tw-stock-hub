@@ -23,8 +23,10 @@ def test_cnyes_json_item():
     }
 
 
-def test_cnyes_item_without_title_is_skipped():
-    assert parse_cnyes({"newsId": 1, "title": "", "publishAt": 0}) is None
+def test_cnyes_item_without_title_or_time_is_skipped():
+    assert parse_cnyes({"newsId": 1, "title": "", "publishAt": 1790396856}) is None
+    # 沒有發布時間：不能用 1970 或抓取時間代替（唯一鍵含 published_at，會重複寫入）
+    assert parse_cnyes({"newsId": 1, "title": "x", "publishAt": None}) is None
 
 
 def test_yahoo_symbol_by_market():
@@ -45,5 +47,6 @@ def test_yahoo_rss_entry_uses_pubdate_and_stock():
     assert item["url"] == "https://tw.stock.yahoo.com/news/abc"
 
 
-def test_yahoo_entry_without_link_is_skipped():
-    assert parse_yahoo_entry({"title": "x"}, "2330") is None
+def test_yahoo_entry_without_link_or_pubdate_is_skipped():
+    assert parse_yahoo_entry({"title": "x", "published": "Sat, 26 Sep 2026 08:35:30 GMT"}, "2330") is None
+    assert parse_yahoo_entry({"title": "x", "link": "https://a"}, "2330") is None

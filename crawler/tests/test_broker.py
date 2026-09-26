@@ -1,4 +1,6 @@
-from crawlers.quote.broker import decode_bsr_csv, normalize_captcha, parse_bsr_rows
+from datetime import date
+
+from crawlers.quote.broker import decode_bsr_csv, normalize_captcha, parse_bsr_rows, pick_trade_date
 from scheduler.jobs import resolve_job, resolve_param_job
 
 CSV = (
@@ -33,3 +35,12 @@ def test_param_job_for_on_demand_broker():
     assert resolve_param_job("nope:2454") is None
     assert resolve_param_job("twse_daily") is None
     assert resolve_job("twse_daily") == "twse_daily"
+
+
+def test_trade_date_is_matched_by_total_volume():
+    # BSR 不標日期：各分點買進股數合計 = 當日成交股數 → 以此判斷是哪一天的資料
+    candidates = [(date(2026, 9, 25), 5_000_000), (date(2026, 9, 24), 14_558_000), (date(2026, 9, 23), 9_000_000)]
+    assert pick_trade_date(14_558_000, candidates) == date(2026, 9, 24)
+    # 不完全相等（例如含鉅額交易）時取最接近者
+    assert pick_trade_date(14_000_000, candidates) == date(2026, 9, 24)
+    assert pick_trade_date(1, []) is None
