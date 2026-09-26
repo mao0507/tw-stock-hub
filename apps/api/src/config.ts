@@ -1,5 +1,9 @@
 import { z } from 'zod'
 
+// docker compose 未設定的變數會以空字串傳入 → 視為未設定
+const emptyAsUndefined = <T extends z.ZodTypeAny>(schema: T) =>
+  z.preprocess((v) => (v === '' ? undefined : v), schema)
+
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().int().default(3001),
@@ -14,6 +18,12 @@ const envSchema = z.object({
   /** 前端網址：登入後導回、CSRF Origin 檢查 */
   WEB_ORIGIN: z.string().url(),
   ADMIN_API_KEY: z.string().min(16),
+  /** Telegram 通知（選填；未設定則通道停用）。設了 token 就要一併設 bot 帳號名稱 */
+  TELEGRAM_BOT_TOKEN: emptyAsUndefined(z.string().optional()),
+  TELEGRAM_BOT_USERNAME: emptyAsUndefined(z.string().regex(/^[A-Za-z0-9_]{5,32}$/).optional()),
+}).refine((e) => !e.TELEGRAM_BOT_TOKEN || e.TELEGRAM_BOT_USERNAME, {
+  message: '設定 TELEGRAM_BOT_TOKEN 時需一併設定 TELEGRAM_BOT_USERNAME',
+  path: ['TELEGRAM_BOT_USERNAME'],
 })
 
 export type Config = {
@@ -26,6 +36,7 @@ export type Config = {
   allowedEmails: ReadonlySet<string>
   webOrigin: string
   adminApiKey: string
+  telegram: { token?: string; botUsername?: string }
 }
 
 export function parseAllowedEmails(raw: string): ReadonlySet<string> {
@@ -53,5 +64,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     allowedEmails: parseAllowedEmails(e.ALLOWED_EMAILS),
     webOrigin: e.WEB_ORIGIN,
     adminApiKey: e.ADMIN_API_KEY,
+    telegram: { token: e.TELEGRAM_BOT_TOKEN, botUsername: e.TELEGRAM_BOT_USERNAME },
   }
 }

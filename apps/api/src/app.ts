@@ -9,6 +9,7 @@ import { createAdminRoutes } from './modules/admin/index.js'
 import { createAuthRoutes } from './modules/auth/index.js'
 import { createPortfolioRoutes } from './modules/portfolio/index.js'
 import { createStockRoutes } from './modules/stock/index.js'
+import { createTelegram, type Telegram } from './lib/telegram.js'
 
 export type AppDeps = {
   config: Config
@@ -16,9 +17,11 @@ export type AppDeps = {
   ping: () => Promise<void>
   /** 測試用：取代真 Google OAuth */
   googleOAuth?: MiddlewareHandler
+  /** 未指定時依 config 建立（沒設 token 則停用） */
+  telegram?: Telegram
 }
 
-export function createApp({ config, db, ping, googleOAuth }: AppDeps) {
+export function createApp({ config, db, ping, googleOAuth, telegram }: AppDeps) {
   const app = new OpenAPIHono()
 
   if (config.nodeEnv !== 'test') app.use(logger())
@@ -31,7 +34,7 @@ export function createApp({ config, db, ping, googleOAuth }: AppDeps) {
 
   app.route('/api/auth', createAuthRoutes(config, db, googleOAuth))
   app.route('/api/admin', createAdminRoutes(db, config.adminApiKey))
-  app.route('/api/portfolio', createPortfolioRoutes(db, config.jwtSecret))
+  app.route('/api/portfolio', createPortfolioRoutes(db, config.jwtSecret, telegram ?? createTelegram(config.telegram)))
   // ponytail: Q27 決議目前只在本機跑，stock 路由暫不驗證；上線前改掛 requireAuth
   app.route('/api', createStockRoutes(db))
 

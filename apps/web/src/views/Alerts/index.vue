@@ -7,6 +7,7 @@ import {
   AppButton, AppInput, AppSelect, AppModal,
   LoadingSkeleton, EmptyState,
 } from '@tw-stock-hub/ui'
+import TelegramLink from './TelegramLink.vue'
 
 const alerts = ref<AlertItem[]>([])
 const isLoading = ref(true)
@@ -115,6 +116,8 @@ const fmtTime = (iso: string) => new Date(iso).toLocaleString('zh-TW', { month: 
     <p class="text-sm text-gray-600">
       每個交易日收盤資料更新後自動檢查，條件成立時會出現在右上角通知；觸發後需「重新啟用」才會再次提醒。
     </p>
+
+    <TelegramLink />
 
     <LoadingSkeleton
       v-if="isLoading"

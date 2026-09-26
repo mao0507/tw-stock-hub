@@ -21,6 +21,7 @@ export const testConfig: Config = {
   allowedEmails: parseAllowedEmails('me@example.com,friend@example.com'),
   webOrigin: 'http://localhost:8080',
   adminApiKey: 'k'.repeat(16),
+  telegram: {},
 }
 
 export type TestDb = Awaited<ReturnType<typeof startTestDb>>

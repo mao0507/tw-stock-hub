@@ -27,6 +27,10 @@ export const users = members.table('users', {
   nickname: varchar('nickname', { length: 50 }).notNull(),
   avatarUrl: varchar('avatar_url', { length: 500 }),
   lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
+  /** Telegram 通知（#27）：綁定後的 chat id；綁定碼與期限用於 /start 驗證 */
+  telegramChatId: varchar('telegram_chat_id', { length: 32 }),
+  telegramLinkCode: varchar('telegram_link_code', { length: 16 }),
+  telegramLinkExpiresAt: timestamp('telegram_link_expires_at', { withTimezone: true }),
   createdAt: createdAt(),
   updatedAt: timestamp('updated_at', { withTimezone: true })
     .notNull()

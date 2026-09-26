@@ -32,7 +32,9 @@ configs/        eslint / tailwind / tsconfig 共用設定
 
 - Phase 1：已完成（#2–#16）
 - Phase 2：技術指標、RS、screener（#19–#21 完成；crawler `analytics/`，API `/stocks/{id}/indicators`、`POST /screener`）
-- Phase 3：Alert/通知、Telegram、backtest、score、news、分點（含 on-demand 分點爬取）
+- Phase 3：Alert/通知、Telegram、backtest、score、news、分點（含 on-demand 分點爬取）（#22–#27 完成）
+  - 分點按需爬取：api 寫入 `pending_jobs` 的 `broker:<代號>`，`run_job` 以 `PARAM_JOBS` 解析帶參數任務
+  - Telegram：設 `TELEGRAM_BOT_TOKEN`／`TELEGRAM_BOT_USERNAME` 才啟用；綁定用 `getUpdates` 比對 `/start <碼>`，不需 webhook
 
 ### Phase 1 待辦
 

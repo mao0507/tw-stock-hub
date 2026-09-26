@@ -52,6 +52,8 @@ services:
       ALLOWED_EMAILS: ${ALLOWED_EMAILS:?}
       WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:8080}
       ADMIN_API_KEY: ${ADMIN_API_KEY:?}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
     depends_on:
       db:
         condition: service_healthy

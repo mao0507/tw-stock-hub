@@ -1,8 +1,12 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
+import { and, inArray, isNotNull } from 'drizzle-orm'
 import type { Db } from '../../db/client.js'
+import { users } from '../../db/schema/members.js'
+import type { Telegram } from '../../lib/telegram.js'
 import { type AuthEnv, requireAuth } from '../../middleware/auth.js'
 import { createAlertsRepository, type Triggered } from './alerts.repository.js'
 import { createAlertRoutes } from './alerts.routes.js'
+import { createTelegramRoutes } from './telegram.routes.js'
 import { createPortfolioRepository, MAX_PRICE, MAX_TOTAL_SHARES } from './repository.js'
 import { summarize } from './summary.js'
 import { createWatchlistRoutes } from './watchlist.routes.js'
@@ -185,18 +189,39 @@ export function recomputeDividendsForStock(db: Db): Promise<{ updated: number; f
   return createPortfolioRepository(db).recomputeAllPositions()
 }
 
-/** 行情任務完成時呼叫：盤後評估提醒規則，回傳本次觸發的通知 */
-export function evaluateAlerts(db: Db): Promise<Triggered[]> {
-  return createAlertsRepository(db).evaluate()
+/**
+ * 行情任務完成時呼叫：盤後評估提醒規則，回傳本次觸發的通知。
+ * 有 Telegram 時推送給已綁定的使用者；推送失敗只記 log，不影響站內通知。
+ */
+export async function evaluateAlerts(db: Db, telegram?: Telegram): Promise<Triggered[]> {
+  const triggered = await createAlertsRepository(db).evaluate()
+  if (telegram?.enabled && triggered.length) {
+    const ids = [...new Set(triggered.map((t) => t.userId))]
+    const chats = new Map(
+      (await db.select({ id: users.id, chatId: users.telegramChatId }).from(users)
+        .where(and(inArray(users.id, ids), isNotNull(users.telegramChatId))))
+        .map((u) => [u.id, u.chatId!]),
+    )
+    for (const t of triggered) {
+      const chatId = chats.get(t.userId)
+      if (!chatId) continue
+      await telegram.send(chatId, `🔔 ${t.title}
+${t.body}`).catch((err: unknown) => {
+        console.error('[api] Telegram 推送失敗', t.notificationId, err instanceof Error ? err.message : err)
+      })
+    }
+  }
+  return triggered
 }
 
-export function createPortfolioRoutes(db: Db, jwtSecret: string) {
+export function createPortfolioRoutes(db: Db, jwtSecret: string, telegram: Telegram) {
   const app = new OpenAPIHono<AuthEnv>()
   const repo = createPortfolioRepository(db)
 
   app.use('*', requireAuth(jwtSecret))
   app.route('/', createWatchlistRoutes(db))
   app.route('/', createAlertRoutes(db))
+  app.route('/', createTelegramRoutes(db, telegram))
 
   app.openapi(routes.holdings, async (c) => {
     const rows = await repo.holdingsWithPrice(c.get('jwtPayload').sub)

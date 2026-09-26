@@ -28,6 +28,24 @@ export const alertsApi = {
     return data
   },
 
+  async getTelegram(): Promise<{ enabled: boolean; linked: boolean; botUsername: string | null }> {
+    const { data } = await apiClient.get(`${BASE}/telegram`)
+    return data
+  },
+
+  async createTelegramLink(): Promise<{ code: string; url: string; expiresInMinutes: number }> {
+    const { data } = await apiClient.post(`${BASE}/telegram/link`)
+    return data
+  },
+
+  async confirmTelegramLink(): Promise<void> {
+    await apiClient.post(`${BASE}/telegram/link/confirm`)
+  },
+
+  async unlinkTelegram(): Promise<void> {
+    await apiClient.delete(`${BASE}/telegram`)
+  },
+
   /** 未指定 ids 則全部標為已讀 */
   async markRead(ids?: string[]): Promise<void> {
     await apiClient.post(`${BASE}/notifications/read`, ids ? { ids } : {})
