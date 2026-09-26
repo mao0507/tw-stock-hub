@@ -289,7 +289,8 @@ const tabs: { key: TabKey; label: string }[] = [
   { key: 'chips', label: '籌碼分析' },
   { key: 'fundamental', label: '基本面' },
   { key: 'dividend', label: '除權息' },
-  // Phase 3 才提供：回測、相關新聞、重大訊息
+  { key: 'backtest', label: '回測' },
+  // 相關新聞、重大訊息：#24 新聞 API 上線後加入
 ]
 </script>
 

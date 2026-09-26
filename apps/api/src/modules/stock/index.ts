@@ -6,6 +6,8 @@ import { registerFundamentalRoutes } from './fundamentals.js'
 import { registerMarketRoutes } from './market.js'
 import { registerRankingRoutes } from './rankings.js'
 import { registerOverviewRoutes } from './overview.js'
+import { registerBacktestRoutes } from './backtest.js'
+import { registerScoreRoutes } from './score.js'
 import { registerScreenerRoutes } from './screener.js'
 import { registerTechnicalRoutes } from './technical.js'
 
@@ -20,5 +22,7 @@ export function createStockRoutes(db: Db) {
   registerCalendarRoutes(app, db)
   registerTechnicalRoutes(app, db)
   registerScreenerRoutes(app, db)
+  registerScoreRoutes(app, db)
+  registerBacktestRoutes(app, db)
   return app
 }
