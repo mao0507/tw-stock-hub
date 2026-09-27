@@ -6,6 +6,7 @@ import type { Telegram } from '../../lib/telegram.js'
 import { type AuthEnv, requireAuth } from '../../middleware/auth.js'
 import { createAlertsRepository, type Triggered } from './alerts.repository.js'
 import { createAlertRoutes } from './alerts.routes.js'
+import { createSignalRoutes } from './signals.routes.js'
 import { createTelegramRoutes } from './telegram.routes.js'
 import { createPortfolioRepository, MAX_PRICE, MAX_TOTAL_SHARES } from './repository.js'
 import { summarize } from './summary.js'
@@ -222,6 +223,7 @@ export function createPortfolioRoutes(db: Db, jwtSecret: string, telegram: Teleg
   app.route('/', createWatchlistRoutes(db))
   app.route('/', createAlertRoutes(db))
   app.route('/', createTelegramRoutes(db, telegram))
+  app.route('/', createSignalRoutes(db))
 
   app.openapi(routes.holdings, async (c) => {
     const rows = await repo.holdingsWithPrice(c.get('jwtPayload').sub)

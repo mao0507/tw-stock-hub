@@ -3,6 +3,8 @@ import { ref, computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useMarketStore } from '@/stores/market.store'
 import { useMediaQuery } from '@/composables/useMediaQuery'
+import { useAuthStore } from '@/stores/auth.store'
+import MySignals from './MySignals.vue'
 import { IndexLineChart, HeatmapChart } from '@tw-stock-hub/charts'
 import { LoadingSkeleton, NewsFeed, useStaggerIn, useCountUp } from '@tw-stock-hub/ui'
 import { stockApi } from '@tw-stock-hub/api-client'
@@ -12,6 +14,7 @@ type Period = '1M' | '3M' | '6M' | '1Y'
 
 const marketStore = useMarketStore()
 const { overview, heatmapData, historyData, isLoading } = storeToRefs(marketStore)
+const { isLoggedIn } = storeToRefs(useAuthStore())
 
 const rootEl = ref<HTMLElement>()
 useStaggerIn(rootEl, '.panel')
@@ -291,6 +294,8 @@ function fmtThousandShares(v: number): string {
         </div>
       </dl>
     </section>
+
+    <MySignals v-if="isLoggedIn" />
 
     <!-- 走勢 + 類股 -->
     <div class="grid gap-5 xl:grid-cols-5">

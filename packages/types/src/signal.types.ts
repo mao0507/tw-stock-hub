@@ -39,3 +39,24 @@ export interface TechnicalSignal {
 /** 未知代碼（後端新增而前端尚未更新）時的顯示名稱 */
 export const signalLabel = (code: string): string =>
   (SIGNAL_META as Record<string, { label: string }>)[code]?.label ?? code
+
+/** 今日訊號（#31）：最新訊號日的一筆（股票 × 訊號） */
+export interface TodaySignalItem {
+  stockId: string
+  stockName: string
+  signal: SignalCode
+  side: SignalSide
+  values: Record<string, number>
+  close: number | null
+  changePct: number | null
+  /** 只有「我的」版本才有 */
+  inWatchlist?: boolean
+  inHoldings?: boolean
+}
+
+export interface TodaySignals {
+  date: string | null
+  items: TodaySignalItem[]
+}
+
+export type SignalScope = 'all' | 'watchlist' | 'holdings' | 'mine'

@@ -52,6 +52,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '選股篩選器' },
       },
       {
+        path: 'signals',
+        name: 'signals',
+        component: () => import('@/views/Signals/index.vue'),
+        meta: { title: '今日訊號' },
+      },
+      {
         path: 'calendar',
         name: 'calendar',
         component: () => import('@/views/Calendar/index.vue'),

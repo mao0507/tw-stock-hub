@@ -28,6 +28,9 @@ beforeAll(async () => {
   await signal('2026-09-24', '2330', 'breakout_60d_high', 'bull', { close: 110, prior_high: 105 })
   await signal('2026-09-24', '2330', 'rsi_overbought', 'bear', { rsi: 72 })
   await signal('2026-09-24', '2317', 'ma_death_cross', 'bear')
+  await t.admin`
+    INSERT INTO stocks.daily_quotes (date, stock_id, open, high, low, close, volume, value, change, change_pct) VALUES
+      ('2026-09-24', '2330', 1, 1, 1, 110, 1, 1, 2, 1.85), ('2026-09-24', '2317', 1, 1, 1, 200, 1, 1, -3, -1.48)`
 }, 120_000)
 
 afterAll(async () => {
@@ -57,5 +60,34 @@ describe('GET /stocks/{id}/signals', () => {
     expect((await get('/stocks/9999/signals')).status).toBe(404)
     expect((await get('/stocks/2330/signals?from=2026-09-30&to=2026-09-01')).status).toBe(400)
     expect((await get('/stocks/2330/signals?from=2020-01-01&to=2026-09-01')).status).toBe(400)
+  })
+})
+
+type Today = {
+  date: string | null
+  items: { stockId: string; stockName: string; close: number | null; changePct: number | null; signal: string; side: string; values: Record<string, number> }[]
+}
+const today = async (q = '') => {
+  const res = await app.request(`/api/signals/today${q}`)
+  return { status: res.status, body: (await res.json()) as Today }
+}
+
+describe('GET /signals/today', () => {
+  it('最新訊號日的全市場訊號，附股名、收盤、漲跌幅，依訊號代碼再依股票排序', async () => {
+    const { status, body } = await today()
+    expect(status).toBe(200)
+    expect(body.date).toBe('2026-09-24')
+    expect(body.items.map((i) => [i.signal, i.stockId])).toEqual([
+      ['breakout_60d_high', '2330'],
+      ['ma_death_cross', '2317'],
+      ['rsi_overbought', '2330'],
+    ])
+    expect(body.items[0]).toMatchObject({ stockName: '台積電', close: 110, changePct: 1.85, side: 'bull' })
+  })
+
+  it('依多空、訊號代碼篩選；代碼不合法 400', async () => {
+    expect((await today('?side=bear')).body.items.map((i) => i.signal)).toEqual(['ma_death_cross', 'rsi_overbought'])
+    expect((await today('?signal=ma_death_cross')).body.items.map((i) => i.stockId)).toEqual(['2317'])
+    expect((await today('?signal=nope!')).status).toBe(400)
   })
 })
