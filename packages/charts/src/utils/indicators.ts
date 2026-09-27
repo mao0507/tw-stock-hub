@@ -1,10 +1,12 @@
-// 技術指標計算（KD / MACD / RSI），輸入為時間序列的 OHLC。
+// 技術指標計算，輸入為依日期升冪的 OHLC。KD／MACD／RSI 公式與 crawler analytics/technical.py 一致。
 
 export interface OHLC {
   date: string
   high: number
   low: number
   close: number
+  /** OBV 用；單位由呼叫端決定（K 線傳張） */
+  volume?: number
 }
 
 export interface Point {
@@ -109,6 +111,106 @@ export function calcBollingerBands(
     lower.push({ time, value: round(avg - stdDev * sd) })
   }
   return { upper, mid, lower }
+}
+
+/** OBV 能量潮：收漲加量、收跌減量、平盤不變，自第一根起算 0 */
+export function calcOBV(data: OHLC[]): Point[] {
+  let obv = 0
+  return data.map((d, i) => {
+    if (i > 0) {
+      const diff = d.close - data[i - 1]!.close
+      obv += diff > 0 ? (d.volume ?? 0) : diff < 0 ? -(d.volume ?? 0) : 0
+    }
+    return { time: d.date, value: round(obv) }
+  })
+}
+
+/** 真實區間（第一根為高低差） */
+function trueRange(data: OHLC[]): number[] {
+  return data.map((d, i) => {
+    if (i === 0) return d.high - d.low
+    const pc = data[i - 1]!.close
+    return Math.max(d.high - d.low, Math.abs(d.high - pc), Math.abs(d.low - pc))
+  })
+}
+
+/** ATR 平均真實區間（預設 14，Wilder 平滑） */
+export function calcATR(data: OHLC[], period = 14): Point[] {
+  if (data.length < period) return []
+  const tr = trueRange(data)
+  let atr = tr.slice(0, period).reduce((s, v) => s + v, 0) / period
+  const out: Point[] = [{ time: data[period - 1]!.date, value: round(atr) }]
+  for (let i = period; i < data.length; i++) {
+    atr = (atr * (period - 1) + tr[i]!) / period
+    out.push({ time: data[i]!.date, value: round(atr) })
+  }
+  return out
+}
+
+/** 威廉指標 %R（預設 14）：(收盤 − 最高) ÷ (最高 − 最低) × 100，範圍 −100～0 */
+export function calcWilliamsR(data: OHLC[], period = 14): Point[] {
+  const out: Point[] = []
+  for (let i = period - 1; i < data.length; i++) {
+    const w = data.slice(i - period + 1, i + 1)
+    const hh = Math.max(...w.map(s => s.high))
+    const ll = Math.min(...w.map(s => s.low))
+    out.push({ time: data[i]!.date, value: hh === ll ? 0 : round(((data[i]!.close - hh) / (hh - ll)) * 100) })
+  }
+  return out
+}
+
+/** 乖離率（預設 20 日）：(收盤 − 均線) ÷ 均線 × 100 */
+export function calcBias(data: OHLC[], period = 20): Point[] {
+  const out: Point[] = []
+  for (let i = period - 1; i < data.length; i++) {
+    const ma = data.slice(i - period + 1, i + 1).reduce((s, d) => s + d.close, 0) / period
+    out.push({ time: data[i]!.date, value: round(((data[i]!.close - ma) / ma) * 100) })
+  }
+  return out
+}
+
+/** DMI 趨向指標（預設 14，Wilder 平滑）：+DI、−DI 自第 period 根起，ADX 自第 2×period−1 根起 */
+export function calcDMI(data: OHLC[], period = 14): { pdi: Point[]; mdi: Point[]; adx: Point[] } {
+  const pdi: Point[] = []
+  const mdi: Point[] = []
+  const adx: Point[] = []
+  if (data.length <= period) return { pdi, mdi, adx }
+  const tr = trueRange(data)
+  const plusDM = data.map((d, i) => {
+    if (i === 0) return 0
+    const up = d.high - data[i - 1]!.high
+    const down = data[i - 1]!.low - d.low
+    return up > down && up > 0 ? up : 0
+  })
+  const minusDM = data.map((d, i) => {
+    if (i === 0) return 0
+    const up = d.high - data[i - 1]!.high
+    const down = data[i - 1]!.low - d.low
+    return down > up && down > 0 ? down : 0
+  })
+  const sum = (a: number[]) => a.slice(1, period + 1).reduce((s, v) => s + v, 0)
+  let sTR = sum(tr)
+  let sP = sum(plusDM)
+  let sM = sum(minusDM)
+  const dx: number[] = []
+  let adxVal = 0
+  for (let i = period; i < data.length; i++) {
+    if (i > period) {
+      sTR = sTR - sTR / period + tr[i]!
+      sP = sP - sP / period + plusDM[i]!
+      sM = sM - sM / period + minusDM[i]!
+    }
+    const p = sTR ? (100 * sP) / sTR : 0
+    const m = sTR ? (100 * sM) / sTR : 0
+    const time = data[i]!.date
+    pdi.push({ time, value: round(p) })
+    mdi.push({ time, value: round(m) })
+    dx.push(p + m === 0 ? 0 : (100 * Math.abs(p - m)) / (p + m))
+    if (dx.length === period) adxVal = dx.reduce((s, v) => s + v, 0) / period
+    else if (dx.length > period) adxVal = (adxVal * (period - 1) + dx.at(-1)!) / period
+    if (dx.length >= period) adx.push({ time, value: round(adxVal) })
+  }
+  return { pdi, mdi, adx }
 }
 
 function ema(values: number[], period: number): number[] {

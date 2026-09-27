@@ -15,12 +15,15 @@ import {
 import type { DailyQuote } from '@tw-stock-hub/types'
 import { useTradingViewChart } from '../composables/useTradingViewChart'
 import { STOCK_COLORS } from '../theme/echarts-theme'
-import { calcBollingerBands, calcKD, calcMA, calcMACD, calcRSI, type OHLC } from '../utils/indicators'
+import {
+  calcATR, calcBias, calcBollingerBands, calcDMI, calcKD, calcMA, calcMACD, calcOBV, calcRSI, calcWilliamsR, type OHLC,
+} from '../utils/indicators'
+import { withDefaults as withParamDefaults, type PartialIndicatorParams } from '../utils/indicator-params'
 import { assignMarkers, type ChartMarker } from '../utils/markers'
 
 type Interval = 'daily' | 'weekly' | 'monthly'
 type MAKey = 5 | 10 | 20 | 60
-type Indicator = 'none' | 'kd' | 'macd' | 'rsi' | 'boll'
+type Indicator = 'none' | 'kd' | 'macd' | 'rsi' | 'boll' | 'obv' | 'atr' | 'wr' | 'bias' | 'dmi'
 
 interface Props {
   data: DailyQuote[]
@@ -29,6 +32,8 @@ interface Props {
   showMA?: boolean
   /** K 棒上的標記（例如技術訊號）；未傳則不顯示開關 */
   markers?: ChartMarker[]
+  /** 指標參數（使用者偏好）；缺的用預設 */
+  indicatorParams?: PartialIndicatorParams | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -54,7 +59,13 @@ const indicators: { value: Indicator; label: string }[] = [
   { value: 'macd', label: 'MACD' },
   { value: 'rsi', label: 'RSI' },
   { value: 'boll', label: 'BOLL' },
+  { value: 'obv', label: 'OBV' },
+  { value: 'atr', label: 'ATR' },
+  { value: 'wr', label: '威廉' },
+  { value: 'bias', label: '乖離' },
+  { value: 'dmi', label: 'DMI' },
 ]
+const params = computed(() => withParamDefaults(props.indicatorParams))
 
 const { chartContainer, chart, isReady } = useTradingViewChart({ height: props.height })
 
@@ -94,7 +105,7 @@ const legend = computed(() => {
 })
 
 function toOHLC(data: DailyQuote[]): OHLC[] {
-  return data.map(d => ({ date: d.date, high: d.high, low: d.low, close: d.close }))
+  return data.map(d => ({ date: d.date, high: d.high, low: d.low, close: d.close, volume: Math.round(d.volume / 1000) }))
 }
 
 function maLineData(data: DailyQuote[], period: MAKey): LineData<Time>[] {
@@ -141,7 +152,7 @@ function rebuildBoll(): void {
   if (indicator.value !== 'boll' || !props.data.length) return
 
   const ohlc = toOHLC(props.data)
-  const { upper, mid, lower } = calcBollingerBands(ohlc)
+  const { upper, mid, lower } = calcBollingerBands(ohlc, params.value.boll.period, params.value.boll.stdDev)
   const line = (color: string, dashed = false) =>
     chart.value!.addSeries(LineSeries, {
       color,
@@ -167,7 +178,8 @@ function rebuildIndicator(): void {
   rebuildBoll()
   if (indicator.value === 'none' || indicator.value === 'boll' || !props.data.length) { layoutPanes(); return }
 
-  const ohlc: OHLC[] = props.data.map(d => ({ date: d.date, high: d.high, low: d.low, close: d.close }))
+  const ohlc = toOHLC(props.data)
+  const p = params.value
   const pane = 1
   const line = (color: string) =>
     chart.value!.addSeries(LineSeries, {
@@ -177,20 +189,38 @@ function rebuildIndicator(): void {
     pts.map(p => ({ time: p.time as Time, value: p.value }))
 
   if (indicator.value === 'kd') {
-    const { k, d } = calcKD(ohlc)
+    const { k, d } = calcKD(ohlc, p.kd.period)
     const kS = line('#F59E0B'); kS.setData(toData(k))
     const dS = line('#3B82F6'); dS.setData(toData(d))
     indicatorSeries = [kS, dS]
   } else if (indicator.value === 'rsi') {
-    const rS = line('#8B5CF6'); rS.setData(toData(calcRSI(ohlc)))
+    const rS = line('#8B5CF6'); rS.setData(toData(calcRSI(ohlc, p.rsi.period)))
     indicatorSeries = [rS]
   } else if (indicator.value === 'macd') {
-    const { dif, dea, hist } = calcMACD(ohlc)
+    const { dif, dea, hist } = calcMACD(ohlc, p.macd.fast, p.macd.slow, p.macd.signal)
     const hS = chart.value.addSeries(HistogramSeries, { priceLineVisible: false, lastValueVisible: false }, pane)
     hS.setData(hist.map(p => ({ time: p.time as Time, value: p.value, color: p.value >= 0 ? STOCK_COLORS.upMid : STOCK_COLORS.downMid })))
     const difS = line('#F59E0B'); difS.setData(toData(dif))
     const deaS = line('#3B82F6'); deaS.setData(toData(dea))
     indicatorSeries = [hS, difS, deaS]
+  } else if (indicator.value === 'obv') {
+    const s = line('#6366F1'); s.setData(toData(calcOBV(ohlc)))
+    indicatorSeries = [s]
+  } else if (indicator.value === 'atr') {
+    const s = line('#0EA5E9'); s.setData(toData(calcATR(ohlc, p.atr.period)))
+    indicatorSeries = [s]
+  } else if (indicator.value === 'wr') {
+    const s = line('#8B5CF6'); s.setData(toData(calcWilliamsR(ohlc, p.wr.period)))
+    indicatorSeries = [s]
+  } else if (indicator.value === 'bias') {
+    const s = line('#F59E0B'); s.setData(toData(calcBias(ohlc, p.bias.period)))
+    indicatorSeries = [s]
+  } else if (indicator.value === 'dmi') {
+    const { pdi, mdi, adx } = calcDMI(ohlc, p.dmi.period)
+    const pS = line(STOCK_COLORS.up); pS.setData(toData(pdi))
+    const mS = line(STOCK_COLORS.down); mS.setData(toData(mdi))
+    const aS = line('#6B7280'); aS.setData(toData(adx))
+    indicatorSeries = [pS, mS, aS]
   }
   layoutPanes()
 }
@@ -292,7 +322,7 @@ function bindCrosshair(): void {
 
 watch(isReady, (ready) => { if (ready) { initSeries(); updateData(); bindCrosshair() } })
 watch(() => props.data, () => updateData(), { deep: false })
-watch(indicator, () => rebuildIndicator())
+watch([indicator, params], () => rebuildIndicator())
 watch(barMarkers, () => updateMarkers())
 </script>
 

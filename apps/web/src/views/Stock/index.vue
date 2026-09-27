@@ -16,6 +16,8 @@ import FundamentalTab from './FundamentalTab.vue'
 import TechnicalSummary from './TechnicalSummary.vue'
 import RecentSignals from './RecentSignals.vue'
 import BacktestTab from './BacktestTab.vue'
+import ChartSettings from './ChartSettings.vue'
+import { useChartPrefs } from '@/composables/useChartPrefs'
 import StockQuickActions from './StockQuickActions.vue'
 import type {
   BrokerRanking, BrokerDetail, SectorStockItem, BrokerConcentration, BrokerStreak,
@@ -131,6 +133,8 @@ async function toggleBrokerDetail(brokerName: string): Promise<void> {
 
 // ── 報價衍生指標
 const q = computed(() => currentStock.value?.latestQuote ?? null)
+
+const { params: chartPrefs } = useChartPrefs()
 
 // K 線訊號標記（#30）：取目前 K 線範圍內的技術訊號（API 上限 3 年）
 const chartMarkers = ref<ChartMarker[]>([])
@@ -458,10 +462,12 @@ const tabs: { key: TabKey; label: string }[] = [
             <KLineChart
               :data="quoteData"
               :markers="chartMarkers"
+              :indicator-params="chartPrefs"
               :interval="interval"
               :height="380"
               @interval-change="onIntervalChange"
             />
+            <ChartSettings />
             <TechnicalSummary :stock-id="stockId" />
             <RecentSignals :stock-id="stockId" />
           </template>

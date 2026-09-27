@@ -11,3 +11,7 @@ export { default as IndexLineChart } from './components/IndexLineChart.vue'
 export { default as HeatmapChart } from './components/HeatmapChart.vue'
 export { default as PieChart } from './components/PieChart.vue'
 export { assignMarkers, type ChartMarker } from './utils/markers'
+export {
+  DEFAULT_INDICATOR_PARAMS, INDICATOR_PARAM_SPECS, withDefaults as withIndicatorDefaults,
+  type IndicatorKey, type IndicatorParams, type PartialIndicatorParams,
+} from './utils/indicator-params'

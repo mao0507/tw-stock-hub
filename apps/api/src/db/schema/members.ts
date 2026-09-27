@@ -5,6 +5,7 @@ import {
   date,
   index,
   integer,
+  jsonb,
   numeric,
   pgSchema,
   primaryKey,
@@ -193,6 +194,13 @@ export const signalDigests = members.table(
   },
   (t) => [index('idx_signal_digests_user').on(t.userId)],
 )
+
+/** 圖表偏好（#36）：技術指標參數，跨裝置同步；未存過則用前端預設值 */
+export const chartPreferences = members.table('chart_preferences', {
+  userId: uuid('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  indicatorParams: jsonb('indicator_params').$type<Record<string, Record<string, number>>>().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
 
 /** 站內通知（#26）；Telegram 等通道的送出狀態另記 */
 export const notifications = members.table(

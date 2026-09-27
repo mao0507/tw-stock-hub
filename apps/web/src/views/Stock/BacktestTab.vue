@@ -5,10 +5,13 @@ import { stockApi } from '@tw-stock-hub/api-client'
 import type { BacktestResult, BacktestStrategy, BacktestStrategyInfo, DailyQuote } from '@tw-stock-hub/types'
 import { KLineChart, type ChartMarker } from '@tw-stock-hub/charts'
 import { AppButton, AppInput, AppSelect, DataTable } from '@tw-stock-hub/ui'
+import { useChartPrefs } from '@/composables/useChartPrefs'
 
 const props = defineProps<{ stockId: string }>()
 
 type Interval = 'daily' | 'weekly' | 'monthly'
+
+const { params: chartPrefs } = useChartPrefs()
 
 const strategies = ref<BacktestStrategyInfo[]>([])
 const strategy = ref<BacktestStrategy>('ma_cross')
@@ -201,6 +204,7 @@ const money = (v: number) => Math.round(v).toLocaleString('en-US')
         v-if="bars.length"
         :data="bars"
         :markers="markers"
+        :indicator-params="chartPrefs"
         :interval="interval"
         :height="340"
         @interval-change="loadBars($event)"
