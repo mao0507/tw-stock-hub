@@ -15,3 +15,4 @@ export {
   DEFAULT_INDICATOR_PARAMS, INDICATOR_PARAM_SPECS, withDefaults as withIndicatorDefaults,
   type IndicatorKey, type IndicatorParams, type PartialIndicatorParams,
 } from './utils/indicator-params'
+export type { ChartDrawing, DrawingKind, DrawingPoint } from './utils/drawings'

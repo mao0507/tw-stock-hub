@@ -16,7 +16,7 @@ export interface BarMarker {
 }
 
 /** 第一個日期 ≥ target 的索引；都比 target 小回 -1（barDates 需升冪） */
-function firstAtOrAfter(barDates: readonly string[], target: string): number {
+export function firstAtOrAfter(barDates: readonly string[], target: string): number {
   let lo = 0
   let hi = barDates.length
   while (lo < hi) {

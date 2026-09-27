@@ -202,6 +202,24 @@ export const chartPreferences = members.table('chart_preferences', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
+/** K 線畫線（#37）：水平線（1 點）與趨勢線（2 點），每位使用者每檔股票各自保存 */
+export const chartDrawings = members.table(
+  'chart_drawings',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: userId(),
+    stockId: varchar('stock_id', { length: 10 }).notNull(),
+    kind: varchar('kind', { length: 10 }).notNull(),
+    points: jsonb('points').$type<{ time: string; price: number }[]>().notNull(),
+    createdAt: createdAt(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('idx_chart_drawings_user_stock').on(t.userId, t.stockId),
+    check('drawing_kind_valid', sql`${t.kind} IN ('hline', 'trend')`),
+  ],
+)
+
 /** 站內通知（#26）；Telegram 等通道的送出狀態另記 */
 export const notifications = members.table(
   'notifications',

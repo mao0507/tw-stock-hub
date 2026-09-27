@@ -18,6 +18,8 @@ import RecentSignals from './RecentSignals.vue'
 import BacktestTab from './BacktestTab.vue'
 import ChartSettings from './ChartSettings.vue'
 import { useChartPrefs } from '@/composables/useChartPrefs'
+import { useStockDrawings } from '@/composables/useStockDrawings'
+import { useMediaQuery } from '@/composables/useMediaQuery'
 import StockQuickActions from './StockQuickActions.vue'
 import type {
   BrokerRanking, BrokerDetail, SectorStockItem, BrokerConcentration, BrokerStreak,
@@ -133,6 +135,11 @@ async function toggleBrokerDetail(brokerName: string): Promise<void> {
 
 // ── 報價衍生指標
 const q = computed(() => currentStock.value?.latestQuote ?? null)
+
+// K 線畫線（#37）：桌機可編輯，手機只顯示
+const isDesktop = useMediaQuery('(min-width: 768px)')
+const drawing = useStockDrawings(stockId, computed(() => q.value?.close))
+const drawMsg = drawing.message
 
 const { params: chartPrefs } = useChartPrefs()
 
@@ -463,10 +470,23 @@ const tabs: { key: TabKey; label: string }[] = [
               :data="quoteData"
               :markers="chartMarkers"
               :indicator-params="chartPrefs"
+              :drawings="isLoggedIn ? drawing.drawings.value : undefined"
+              :editable="isDesktop"
+              @drawing-create="drawing.create"
+              @drawing-update="drawing.update"
+              @drawing-delete="drawing.remove"
+              @drawing-alert="drawing.toAlert"
               :interval="interval"
               :height="380"
               @interval-change="onIntervalChange"
             />
+            <p
+              v-if="drawMsg"
+              role="status"
+              class="text-sm text-gray-600"
+            >
+              {{ drawMsg }}
+            </p>
             <ChartSettings />
             <TechnicalSummary :stock-id="stockId" />
             <RecentSignals :stock-id="stockId" />

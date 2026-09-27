@@ -20,6 +20,8 @@ import {
 } from '../utils/indicators'
 import { withDefaults as withParamDefaults, type PartialIndicatorParams } from '../utils/indicator-params'
 import { assignMarkers, type ChartMarker } from '../utils/markers'
+import { useChartDrawings } from '../composables/useChartDrawings'
+import type { ChartDrawing, DrawingKind, DrawingPoint } from '../utils/drawings'
 
 type Interval = 'daily' | 'weekly' | 'monthly'
 type MAKey = 5 | 10 | 20 | 60
@@ -34,16 +36,25 @@ interface Props {
   markers?: ChartMarker[]
   /** 指標參數（使用者偏好）；缺的用預設 */
   indicatorParams?: PartialIndicatorParams | null
+  /** 畫線（水平線／趨勢線）；未傳則不顯示畫線功能 */
+  drawings?: ChartDrawing[]
+  /** 可新增、拖曳、刪除畫線（桌機）；否則只顯示 */
+  editable?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   interval: 'daily',
   height: 320,
   showMA: true,
+  editable: false,
 })
 
 const emit = defineEmits<{
   'interval-change': [interval: Interval]
+  'drawing-create': [drawing: { kind: DrawingKind; points: DrawingPoint[] }]
+  'drawing-update': [id: string, points: DrawingPoint[]]
+  'drawing-delete': [id: string]
+  'drawing-alert': [drawing: ChartDrawing]
 }>()
 
 const intervals: { value: Interval; label: string }[] = [
@@ -68,6 +79,23 @@ const indicators: { value: Indicator; label: string }[] = [
 const params = computed(() => withParamDefaults(props.indicatorParams))
 
 const { chartContainer, chart, isReady } = useTradingViewChart({ height: props.height })
+
+const draw = useChartDrawings({
+  chart,
+  container: chartContainer,
+  getSeries: () => candleSeries,
+  drawings: () => props.drawings ?? [],
+  barDates: () => props.data.map(d => d.date),
+  editable: () => !!props.drawings && props.editable,
+  onCreate: d => emit('drawing-create', d),
+  onUpdate: (id, points) => emit('drawing-update', id, points),
+})
+const selectedDrawing = computed(() => props.drawings?.find(d => d.id === draw.selectedId.value) ?? null)
+function deleteSelected(): void {
+  if (!selectedDrawing.value) return
+  emit('drawing-delete', selectedDrawing.value.id)
+  draw.selectedId.value = null
+}
 
 // 標記開關：個人偏好，記在瀏覽器即可
 const MARKER_KEY = 'kline:showMarkers'
@@ -311,6 +339,7 @@ function updateData(): void {
 
   rebuildIndicator()
   updateMarkers()
+  draw.render()
   chart.value?.timeScale().fitContent()
 }
 
@@ -352,6 +381,27 @@ watch(barMarkers, () => updateMarkers())
         </span>
       </div>
 
+      <div
+        v-if="drawings && editable"
+        class="ml-3 hidden items-center gap-1 md:flex"
+        role="group"
+        aria-label="畫線"
+      >
+        <button
+          v-for="t in ([['hline', '水平線'], ['trend', '趨勢線']] as const)"
+          :key="t[0]"
+          type="button"
+          :aria-pressed="draw.mode.value === t[0]"
+          :class="[
+            'rounded px-2 py-1 text-xs font-medium transition-colors',
+            draw.mode.value === t[0] ? 'bg-ink text-white' : 'text-gray-500 hover:bg-gray-100',
+          ]"
+          @click="draw.setMode(t[0])"
+        >
+          {{ t[1] }}
+        </button>
+      </div>
+
       <div class="ml-auto flex flex-wrap items-center gap-1">
         <button
           v-if="markers"
@@ -381,6 +431,38 @@ watch(barMarkers, () => updateMarkers())
     </div>
 
     <div class="relative">
+      <div
+        v-if="drawings && editable && (draw.mode.value !== 'none' || selectedDrawing)"
+        class="absolute right-16 top-2 z-10 hidden items-center gap-3 rounded-md border border-ink/20 bg-white px-3 py-1.5 text-xs text-ink shadow-sm md:flex"
+        role="status"
+      >
+        <template v-if="draw.mode.value === 'hline'">
+          在圖上點一下放置水平線（Esc 取消）
+        </template>
+        <template v-else-if="draw.mode.value === 'trend'">
+          {{ draw.pending.value ? '再點第二個點完成趨勢線' : '點第一個點開始畫趨勢線' }}（Esc 取消）
+        </template>
+        <template v-else-if="selectedDrawing">
+          <span>
+            已選取{{ selectedDrawing.kind === 'hline' ? `水平線 ${selectedDrawing.points[0]!.price}` : '趨勢線' }}，可拖曳調整
+          </span>
+          <button
+            v-if="selectedDrawing.kind === 'hline'"
+            type="button"
+            class="rounded border border-ink px-2 py-0.5 font-medium hover:bg-white"
+            @click="emit('drawing-alert', selectedDrawing)"
+          >
+            設為到價提醒
+          </button>
+          <button
+            type="button"
+            class="rounded border border-red-600 px-2 py-0.5 font-medium text-red-700 hover:bg-white"
+            @click="deleteSelected"
+          >
+            刪除
+          </button>
+        </template>
+      </div>
       <div
         v-if="legend"
         class="pointer-events-none absolute left-2 top-2 z-10 flex flex-wrap items-center gap-x-3 gap-y-0.5 rounded-md bg-white/85 px-2.5 py-1.5 font-mono text-xs shadow-sm backdrop-blur"

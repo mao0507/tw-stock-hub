@@ -83,3 +83,12 @@ export interface SignalDigest {
   lastNotifiedDate: string | null
   createdAt: string
 }
+
+/** K 線畫線（#37）：水平線 1 點、趨勢線 2 點 */
+export interface DrawingPointDto { time: string; price: number }
+export interface ChartDrawingDto {
+  id: string
+  stockId: string
+  kind: 'hline' | 'trend'
+  points: DrawingPointDto[]
+}

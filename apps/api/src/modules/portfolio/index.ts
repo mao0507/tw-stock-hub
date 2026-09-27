@@ -7,6 +7,7 @@ import { type AuthEnv, requireAuth } from '../../middleware/auth.js'
 import { createAlertsRepository, type Triggered } from './alerts.repository.js'
 import { createAlertRoutes } from './alerts.routes.js'
 import { createChartPrefsRoutes } from './chart-prefs.routes.js'
+import { createDrawingRoutes } from './drawings.routes.js'
 import { createSignalRoutes } from './signals.routes.js'
 import { createSignalDigestsRepository } from './signal-digests.repository.js'
 import { createSignalSubsRepository } from './signal-subs.repository.js'
@@ -245,6 +246,7 @@ export function createPortfolioRoutes(db: Db, jwtSecret: string, telegram: Teleg
   app.route('/', createSignalRoutes(db))
   app.route('/', createSignalSubRoutes(db))
   app.route('/', createChartPrefsRoutes(db))
+  app.route('/', createDrawingRoutes(db))
 
   app.openapi(routes.holdings, async (c) => {
     const rows = await repo.holdingsWithPrice(c.get('jwtPayload').sub)
