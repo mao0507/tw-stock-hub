@@ -2,7 +2,8 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { stockApi } from '@tw-stock-hub/api-client'
 import type { ExDividendItem } from '@tw-stock-hub/types'
-import { LoadingSkeleton } from '@tw-stock-hub/ui'
+import { AppModal, LoadingSkeleton } from '@tw-stock-hub/ui'
+import IconChevronRight from '~icons/lucide/chevron-right'
 
 type Mode = 'calendar' | 'list'
 // 手機月曆格太窄，預設清單
@@ -94,6 +95,11 @@ function goToday(): void {
 }
 
 const selectedList = computed(() => (selectedDay.value ? byDay.value.get(selectedDay.value) ?? [] : []))
+const selectedTitle = computed(() => {
+  if (!selectedDay.value) return ''
+  const [y, m, d] = selectedDay.value.split('-').map(Number)
+  return `${m}月${d}日（${weekdays[new Date(y!, m! - 1, d).getDay()]}）除權息`
+})
 
 // 事件配色（依股號 hash 取色，視覺多樣如行事曆）
 const PALETTE = ['ev-red', 'ev-amber', 'ev-green', 'ev-blue', 'ev-violet']
@@ -171,7 +177,10 @@ function evLabel(it: ExDividendItem): string {
               byDay.get(c.date) && 'cell-has',
               selectedDay === c.date && 'cell-sel',
             ]"
-            @click="byDay.get(c.date) ? (selectedDay = selectedDay === c.date ? null : c.date) : null"
+            :role="byDay.get(c.date) ? 'button' : undefined"
+            :tabindex="byDay.get(c.date) ? 0 : undefined"
+            @click="byDay.get(c.date) && (selectedDay = c.date)"
+            @keydown.enter="byDay.get(c.date) && (selectedDay = c.date)"
           >
             <span class="cell-day" :class="c.date === todayStr && 'cell-day-today'">{{ c.day }}</span>
             <div v-if="byDay.get(c.date)" class="events">
@@ -188,19 +197,6 @@ function evLabel(it: ExDividendItem): string {
           </div>
         </div>
 
-        <div v-if="selectedDay && selectedList.length" class="day-detail">
-          <div class="dd-hd">
-            <span class="dd-date num">{{ selectedDay }}</span>
-            <span class="dd-cnt">{{ selectedList.length }} 檔除權息</span>
-          </div>
-          <div class="dd-items">
-            <router-link v-for="it in selectedList" :key="it.stockId" :to="`/stocks/${it.stockId}`" class="dd-item">
-              <span class="ci-name">{{ it.stockName }}</span>
-              <span class="ci-id num">{{ it.stockId }}</span>
-              <span class="ci-div num">{{ evLabel(it) }}</span>
-            </router-link>
-          </div>
-        </div>
       </template>
 
       <!-- 清單 -->
@@ -224,6 +220,42 @@ function evLabel(it: ExDividendItem): string {
         </div>
       </template>
     </div>
+
+    <AppModal
+      :open="!!selectedDay && selectedList.length > 0"
+      :title="selectedTitle"
+      @close="selectedDay = null"
+    >
+      <p class="dd-cnt">
+        共 {{ selectedList.length }} 檔，點選查看個股
+      </p>
+      <div class="dd-list">
+        <div class="dd-row dd-th">
+          <span>股票</span>
+          <span class="dd-r">現金股利</span>
+          <span class="dd-r">配股／千股</span>
+          <span />
+        </div>
+        <router-link
+          v-for="it in selectedList"
+          :key="it.stockId"
+          :to="`/stocks/${it.stockId}`"
+          class="dd-row dd-item"
+          @click="selectedDay = null"
+        >
+          <span class="dd-stock">
+            <span class="ci-name">{{ it.stockName ?? it.stockId }}</span>
+            <span class="ci-id num">{{ it.stockId }}</span>
+          </span>
+          <span class="dd-r num">{{ it.cashDividend != null ? `${it.cashDividend} 元` : '—' }}</span>
+          <span class="dd-r num">{{ it.stockDividendRatio ? `${+(it.stockDividendRatio * 1000).toFixed(2)} 股` : '—' }}</span>
+          <IconChevronRight
+            class="dd-go"
+            aria-hidden="true"
+          />
+        </router-link>
+      </div>
+    </AppModal>
   </div>
 </template>
 
@@ -291,17 +323,18 @@ function evLabel(it: ExDividendItem): string {
 .ev-blue   { background: rgba(47,93,138,0.1); color: #2f5d8a; }
 .ev-violet { background: rgba(107,79,138,0.1); color: #6b4f8a; }
 
-/* 選中日 */
-.day-detail { border-top: 1px solid var(--bd); padding: 1rem 1.25rem; }
-.dd-hd { display: flex; align-items: baseline; gap: 0.6rem; margin-bottom: 0.7rem; }
-.dd-date { font-size: 1rem; font-weight: 700; color: var(--txt); }
-.dd-cnt { font-size: 0.78rem; color: var(--ink); font-weight: 600; }
-.dd-items { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-.dd-item { display: flex; align-items: baseline; gap: 0.4rem; padding: 0.35rem 0.6rem; border: 1px solid var(--bd); border-radius: 7px; text-decoration: none; transition: background 0.12s; }
+/* 選中日彈窗 */
+.dd-cnt { font-size: 0.78rem; color: var(--muted); margin-bottom: 0.6rem; }
+.dd-list { max-height: 60vh; overflow-y: auto; margin: 0 -0.5rem; }
+.dd-row { display: grid; grid-template-columns: 1fr 5rem 5rem 1rem; align-items: center; gap: 0.5rem; padding: 0.55rem 0.5rem; }
+.dd-th { font-size: 0.7rem; color: var(--muted); border-bottom: 1px solid var(--bd); position: sticky; top: 0; background: #fff; }
+.dd-item { border-bottom: 1px solid var(--bd-soft); border-radius: 6px; text-decoration: none; font-size: 0.82rem; color: var(--txt); transition: background 0.12s; }
 .dd-item:hover { background: var(--bg); }
-.ci-name { font-size: 0.82rem; font-weight: 600; color: var(--txt); }
-.ci-id { font-size: 0.66rem; color: var(--muted); }
-.ci-div { font-size: 0.7rem; color: var(--gold); }
+.dd-stock { display: flex; align-items: baseline; gap: 0.4rem; min-width: 0; }
+.dd-r { text-align: right; }
+.dd-go { color: var(--muted); }
+.ci-name { font-size: 0.85rem; font-weight: 600; color: var(--txt); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ci-id { font-size: 0.68rem; color: var(--muted); }
 
 /* 清單 */
 .empty { padding: 3rem; text-align: center; color: var(--muted); }
