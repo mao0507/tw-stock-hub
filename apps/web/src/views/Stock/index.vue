@@ -5,7 +5,7 @@ import { storeToRefs } from 'pinia'
 import { useStockStore } from '@/stores/stock.store'
 import { useWatchlistStore } from '@/stores/watchlist.store'
 import { useAuthStore } from '@/stores/auth.store'
-import { KLineChart, InstitutionalChart, MarginChart } from '@tw-stock-hub/charts'
+import { KLineChart, InstitutionalChart, MarginChart, type ChartMarker } from '@tw-stock-hub/charts'
 import {
   DataTable, LoadingSkeleton,
   NewsFeed, AppButton, AppInput, useStaggerIn,
@@ -20,6 +20,7 @@ import type {
   BrokerRanking, BrokerDetail, SectorStockItem, BrokerConcentration, BrokerStreak,
   DividendItem, BacktestResult,
 } from '@tw-stock-hub/types'
+import { signalLabel } from '@tw-stock-hub/types'
 
 type Interval = 'daily' | 'weekly' | 'monthly'
 type TabKey = 'overview' | 'technical' | 'fundamental' | 'chips' | 'dividend' | 'backtest' | 'news' | 'mops'
@@ -165,6 +166,24 @@ async function toggleBrokerDetail(brokerName: string): Promise<void> {
 
 // ── 報價衍生指標
 const q = computed(() => currentStock.value?.latestQuote ?? null)
+
+// K 線訊號標記（#30）：取目前 K 線範圍內的技術訊號（API 上限 3 年）
+const chartMarkers = ref<ChartMarker[]>([])
+watch(quoteData, async (data) => {
+  const id = stockId.value
+  if (!data.length) { chartMarkers.value = []; return }
+  const to = data.at(-1)!.date
+  const limit = new Date(Date.parse(`${to}T00:00:00Z`) - 3 * 365 * 86_400_000).toISOString().slice(0, 10)
+  const from = data[0]!.date > limit ? data[0]!.date : limit
+  try {
+    const list = await stockApi.getSignals(id, { from, to })
+    if (id !== stockId.value) return
+    chartMarkers.value = list.map((x) => ({ date: x.date, side: x.side, label: signalLabel(x.signal) }))
+  } catch (e) {
+    console.warn('[Stock] signals load failed', e)
+    chartMarkers.value = []
+  }
+})
 
 // 52 週高低（250 根日 K ≈ 一年；僅在日線資料更新時重算，切週/月線不覆蓋）
 const week52 = ref<{ hi: number; lo: number } | null>(null)
@@ -473,6 +492,7 @@ const tabs: { key: TabKey; label: string }[] = [
           <template v-else>
             <KLineChart
               :data="quoteData"
+              :markers="chartMarkers"
               :interval="interval"
               :height="380"
               @interval-change="onIntervalChange"

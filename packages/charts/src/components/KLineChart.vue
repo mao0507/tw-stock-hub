@@ -4,7 +4,10 @@ import {
   CandlestickSeries,
   LineSeries,
   HistogramSeries,
+  createSeriesMarkers,
   type CandlestickData,
+  type ISeriesMarkersPluginApi,
+  type SeriesMarker,
   type LineData,
   type HistogramData,
   type Time,
@@ -13,6 +16,7 @@ import type { DailyQuote } from '@tw-stock-hub/types'
 import { useTradingViewChart } from '../composables/useTradingViewChart'
 import { STOCK_COLORS } from '../theme/echarts-theme'
 import { calcBollingerBands, calcKD, calcMA, calcMACD, calcRSI, type OHLC } from '../utils/indicators'
+import { assignMarkers, type ChartMarker } from '../utils/markers'
 
 type Interval = 'daily' | 'weekly' | 'monthly'
 type MAKey = 5 | 10 | 20 | 60
@@ -23,6 +27,8 @@ interface Props {
   interval?: Interval
   height?: number
   showMA?: boolean
+  /** K 棒上的標記（例如技術訊號）；未傳則不顯示開關 */
+  markers?: ChartMarker[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -52,6 +58,18 @@ const indicators: { value: Indicator; label: string }[] = [
 
 const { chartContainer, chart, isReady } = useTradingViewChart({ height: props.height })
 
+// 標記開關：個人偏好，記在瀏覽器即可
+const MARKER_KEY = 'kline:showMarkers'
+const readPref = () => { try { return localStorage.getItem(MARKER_KEY) !== '0' } catch { return true } }
+const showMarkers = ref(readPref())
+function toggleMarkers(): void {
+  showMarkers.value = !showMarkers.value
+  try { localStorage.setItem(MARKER_KEY, showMarkers.value ? '1' : '0') } catch { /* 無痕模式等 */ }
+}
+const barMarkers = computed(() =>
+  props.markers && showMarkers.value ? assignMarkers(props.data.map(d => d.date), props.markers) : [],
+)
+
 // hover legend
 const hoverDate = ref<string | null>(null)
 const legend = computed(() => {
@@ -71,6 +89,7 @@ const legend = computed(() => {
     change, pct,
     lots: Math.round(item.volume / 1000),
     up: change >= 0,
+    marks: barMarkers.value.filter(m => m.time === item.date),
   }
 })
 
@@ -93,6 +112,20 @@ const MA_COLORS: Record<MAKey, string> = {
 let candleSeries: any = null
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let volumeSeries: any = null
+let markersApi: ISeriesMarkersPluginApi<Time> | null = null
+
+function updateMarkers(): void {
+  if (!candleSeries) return
+  const list: SeriesMarker<Time>[] = barMarkers.value.map(m => ({
+    time: m.time as Time,
+    position: m.side === 'bull' ? 'belowBar' : 'aboveBar',
+    shape: m.side === 'bull' ? 'arrowUp' : 'arrowDown',
+    color: m.side === 'bull' ? STOCK_COLORS.up : STOCK_COLORS.down,
+    size: 1,
+  }))
+  if (markersApi) markersApi.setMarkers(list)
+  else markersApi = createSeriesMarkers(candleSeries, list)
+}
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const maSeriesMap = new Map<MAKey, any>()
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -179,7 +212,7 @@ function initSeries(): void {
   bollSeries = []
   for (const s of indicatorSeries) chart.value.removeSeries(s)
   indicatorSeries = []
-  if (candleSeries) { chart.value.removeSeries(candleSeries); candleSeries = null }
+  if (candleSeries) { chart.value.removeSeries(candleSeries); candleSeries = null; markersApi = null }
   if (volumeSeries) { chart.value.removeSeries(volumeSeries); volumeSeries = null }
 
   candleSeries = chart.value.addSeries(CandlestickSeries, {
@@ -247,6 +280,7 @@ function updateData(): void {
   }
 
   rebuildIndicator()
+  updateMarkers()
   chart.value?.timeScale().fitContent()
 }
 
@@ -259,24 +293,25 @@ function bindCrosshair(): void {
 watch(isReady, (ready) => { if (ready) { initSeries(); updateData(); bindCrosshair() } })
 watch(() => props.data, () => updateData(), { deep: false })
 watch(indicator, () => rebuildIndicator())
+watch(barMarkers, () => updateMarkers())
 </script>
 
 <template>
   <div class="flex flex-col gap-2">
-    <div class="flex items-center gap-1">
+    <div class="flex flex-wrap items-center gap-1">
       <button
         v-for="iv in intervals"
         :key="iv.value"
         :class="[
           'rounded px-2.5 py-1 text-xs font-medium transition-colors',
-          interval === iv.value ? 'bg-up text-white' : 'text-gray-500 hover:bg-gray-100',
+          interval === iv.value ? 'bg-ink text-white' : 'text-gray-500 hover:bg-gray-100',
         ]"
         @click="emit('interval-change', iv.value)"
       >
         {{ iv.label }}
       </button>
 
-      <div v-if="showMA" class="ml-3 flex items-center gap-3">
+      <div v-if="showMA" class="ml-3 hidden items-center gap-3 md:flex">
         <span
           v-for="[period, color] in Object.entries(MA_COLORS)"
           :key="period"
@@ -287,7 +322,20 @@ watch(indicator, () => rebuildIndicator())
         </span>
       </div>
 
-      <div class="ml-auto flex items-center gap-1">
+      <div class="ml-auto flex flex-wrap items-center gap-1">
+        <button
+          v-if="markers"
+          type="button"
+          :aria-pressed="showMarkers"
+          :class="[
+            'mr-2 rounded px-2 py-1 text-xs font-medium transition-colors',
+            showMarkers ? 'bg-ink-soft text-ink' : 'text-gray-400 hover:bg-gray-100',
+          ]"
+          title="在 K 線上標示技術訊號"
+          @click="toggleMarkers"
+        >
+          訊號 {{ showMarkers ? '開' : '關' }}
+        </button>
         <button
           v-for="ind in indicators"
           :key="ind.value"
@@ -317,6 +365,12 @@ watch(indicator, () => rebuildIndicator())
           ({{ legend.pct >= 0 ? '+' : '' }}{{ legend.pct.toFixed(2) }}%)
         </span>
         <span class="text-gray-500">量 {{ legend.lots.toLocaleString() }}張</span>
+        <span
+          v-for="m in legend.marks"
+          :key="m.side"
+          class="basis-full font-sans"
+          :class="m.side === 'bull' ? 'text-up' : 'text-down'"
+        >{{ m.side === 'bull' ? '▲' : '▼' }} {{ m.labels.join('、') }}</span>
       </div>
       <div
         ref="chartContainer"
