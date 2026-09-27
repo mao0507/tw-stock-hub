@@ -8,17 +8,18 @@ import { useAuthStore } from '@/stores/auth.store'
 import { KLineChart, InstitutionalChart, MarginChart, type ChartMarker } from '@tw-stock-hub/charts'
 import {
   DataTable, LoadingSkeleton,
-  NewsFeed, AppButton, AppInput, useStaggerIn,
+  NewsFeed, useStaggerIn,
 } from '@tw-stock-hub/ui'
 import { stockApi } from '@tw-stock-hub/api-client'
 import OverviewTab from './OverviewTab.vue'
 import FundamentalTab from './FundamentalTab.vue'
 import TechnicalSummary from './TechnicalSummary.vue'
 import RecentSignals from './RecentSignals.vue'
+import BacktestTab from './BacktestTab.vue'
 import StockQuickActions from './StockQuickActions.vue'
 import type {
   BrokerRanking, BrokerDetail, SectorStockItem, BrokerConcentration, BrokerStreak,
-  DividendItem, BacktestResult,
+  DividendItem,
 } from '@tw-stock-hub/types'
 import { signalLabel } from '@tw-stock-hub/types'
 
@@ -100,42 +101,6 @@ async function loadDividend(): Promise<void> {
   }
 }
 watch(activeTab, tab => { if (tab === 'dividend') void loadDividend() })
-
-// 回測分頁
-const btFastPeriod = ref(5)
-const btSlowPeriod = ref(20)
-const btFrom = ref('')
-const btTo = ref('')
-const btLoading = ref(false)
-const btError = ref('')
-const btResult = ref<BacktestResult | null>(null)
-
-async function runBacktest(): Promise<void> {
-  btLoading.value = true
-  btError.value = ''
-  try {
-    btResult.value = await stockApi.runBacktest({
-      stockId: stockId.value,
-      fastPeriod: btFastPeriod.value,
-      slowPeriod: btSlowPeriod.value,
-      from: btFrom.value || undefined,
-      to: btTo.value || undefined,
-    })
-  } catch {
-    btError.value = '回測失敗，請確認快線天數小於慢線天數'
-    btResult.value = null
-  } finally {
-    btLoading.value = false
-  }
-}
-
-const btColumns = [
-  { key: 'entryDate', label: '進場日', align: 'left' as const },
-  { key: 'entryPrice', label: '進場價', align: 'right' as const },
-  { key: 'exitDate', label: '出場日', align: 'left' as const },
-  { key: 'exitPrice', label: '出場價', align: 'right' as const },
-  { key: 'returnPct', label: '報酬率%', align: 'right' as const },
-]
 
 // 分點價位別明細（點分點展開）
 const expandedBroker = ref<string | null>(null)
@@ -544,57 +509,10 @@ const tabs: { key: TabKey; label: string }[] = [
         </div>
 
         <!-- Tab: 回測 -->
-        <div v-else-if="activeTab === 'backtest'" class="space-y-4">
-          <div class="fund-sec">
-            <div class="fund-hd">均線黃金/死亡交叉回測</div>
-            <div class="bt-form">
-              <AppInput v-model.number="btFastPeriod" label="快線天數" type="number" />
-              <AppInput v-model.number="btSlowPeriod" label="慢線天數" type="number" />
-              <AppInput v-model="btFrom" label="起始日期" placeholder="YYYY-MM-DD" />
-              <AppInput v-model="btTo" label="結束日期" placeholder="YYYY-MM-DD" />
-              <AppButton :loading="btLoading" @click="runBacktest">執行回測</AppButton>
-            </div>
-            <p class="fund-note">快線上穿慢線（黃金交叉）於次日開盤進場；下穿（死亡交叉）於次日開盤出場，避免同根K棒 look-ahead bias。</p>
-            <p v-if="btError" class="fund-note is-dn">{{ btError }}</p>
-          </div>
-
-          <template v-if="btResult">
-            <div class="kpi-grid">
-              <div class="kpi">
-                <span class="kpi-k">交易次數</span>
-                <span class="kpi-v">{{ btResult.tradeCount }}</span>
-              </div>
-              <div class="kpi">
-                <span class="kpi-k">勝率</span>
-                <span class="kpi-v" :class="btResult.winRate >= 50 ? 'is-up' : 'is-dn'">{{ btResult.winRate }}</span>
-                <span class="kpi-x">%</span>
-              </div>
-              <div class="kpi">
-                <span class="kpi-k">總報酬率</span>
-                <span class="kpi-v" :class="btResult.totalReturnPct >= 0 ? 'is-up' : 'is-dn'">{{ btResult.totalReturnPct }}</span>
-                <span class="kpi-x">%</span>
-              </div>
-              <div class="kpi">
-                <span class="kpi-k">最大回落</span>
-                <span class="kpi-v is-dn">{{ btResult.maxDrawdownPct }}</span>
-                <span class="kpi-x">%</span>
-              </div>
-            </div>
-
-            <div class="fund-sec">
-              <div class="fund-hd-row">
-                <span class="fund-hd">交易明細</span>
-                <span class="fund-hd-side">最終資金 {{ fmtValue(btResult.finalCapital) }}</span>
-              </div>
-              <DataTable
-                :columns="btColumns"
-                :data="btResult.trades"
-                row-key="entryDate"
-                empty-text="無交易紀錄"
-              />
-            </div>
-          </template>
-        </div>
+        <BacktestTab
+          v-else-if="activeTab === 'backtest'"
+          :stock-id="stockId"
+        />
 
         <!-- Tab: 籌碼分析（法人 / 融資券 / 分點） -->
         <template v-else-if="activeTab === 'chips'">
@@ -892,8 +810,6 @@ const tabs: { key: TabKey; label: string }[] = [
 .fill-no { color: var(--dn); background: var(--dn-soft); }
 .fill-na { color: var(--muted); }
 
-.bt-form { display: flex; align-items: flex-end; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.7rem; }
-.bt-form > * { min-width: 8rem; }
 .stat-k {
   font-size: 0.7rem;
   color: var(--muted);

@@ -7,7 +7,7 @@ import type {
   BrokerStreak, BrokerConcentration,
   RevenueItem, FinancialItem, DividendItem, Valuation, HolderItem, ExDividendItem, EtfHoldings,
   FinancialMetrics,
-  StockScore, BacktestParams, BacktestResult, StockIndicators, TechnicalSignal, TodaySignals, SignalSide,
+  StockScore, BacktestParams, BacktestResult, BacktestStrategyInfo, StockIndicators, TechnicalSignal, TodaySignals, SignalSide,
   ContinuousItem, NewsItem, NewsParams, MopsParams,
   ScreenerFilter, ScreenerResponse, PaginatedResponse, Market,
 } from '@tw-stock-hub/types'
@@ -150,6 +150,11 @@ export const stockApi = {
     const { data } = await apiClient.get(`/api/stocks/${id}/score`)
     return data
   },
+  async getBacktestStrategies(): Promise<BacktestStrategyInfo[]> {
+    const { data } = await apiClient.get('/api/backtest/strategies')
+    return data
+  },
+
   async runBacktest(params: BacktestParams): Promise<BacktestResult> {
     const { data } = await apiClient.get('/api/backtest', { params })
     return data

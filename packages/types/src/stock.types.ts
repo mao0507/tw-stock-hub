@@ -211,13 +211,24 @@ export interface StockScore {
   breakdown: StockScoreBreakdownItem[]
 }
 
+export type BacktestStrategy = 'ma_cross' | 'kd_cross' | 'macd_cross' | 'breakout' | 'rsi_rebound'
+
+export interface BacktestStrategyInfo {
+  key: BacktestStrategy
+  label: string
+  params: { key: string; label: string; default: number; min: number; max: number }[]
+}
+
 export interface BacktestParams {
   stockId: string
+  strategy?: BacktestStrategy
   from?: string
   to?: string
-  fastPeriod?: number
-  slowPeriod?: number
   initialCapital?: number
+  /** 是否計入手續費與證交稅（預設 true） */
+  fees?: boolean
+  /** 策略參數（fast、slow、period…，依策略） */
+  [param: string]: string | number | boolean | undefined
 }
 
 export interface BacktestTrade {
@@ -225,6 +236,10 @@ export interface BacktestTrade {
   entryPrice: number
   exitDate: string
   exitPrice: number
+  shares: number
+  /** 該筆手續費＋證交稅 */
+  fees: number
+  /** 扣除費用後的報酬率 % */
   returnPct: number
 }
 
@@ -232,14 +247,16 @@ export interface BacktestResult {
   stockId: string
   from: string | null
   to: string | null
-  fastPeriod: number
-  slowPeriod: number
+  strategy: BacktestStrategy
+  params: Record<string, number>
+  fees: boolean
   trades: BacktestTrade[]
   tradeCount: number
   winRate: number
   totalReturnPct: number
   maxDrawdownPct: number
   finalCapital: number
+  totalFees: number
 }
 
 export interface MetricsQuarter {

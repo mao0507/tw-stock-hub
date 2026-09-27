@@ -1,3 +1,4 @@
+// 規則需與 apps/api/src/lib/fees.ts（回測費用）一致
 /** 券商牌告手續費率 0.1425% */
 export const BROKER_FEE_RATE = 0.001425
 
