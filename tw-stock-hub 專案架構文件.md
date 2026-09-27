@@ -178,3 +178,7 @@ sequenceDiagram
 | 28 | 歷史回補 | 逐日資料（行情、籌碼、大盤、估值）走 TWSE/TPEx 依日期端點；多年基本面（股利含除息日、財報、營收）只能逐檔走 FinMind，依成交值排序、可續跑 |
 | 29 | 分點按需爬取 | api 查無分點資料（上市股）時寫 `pending_jobs`（`broker:<代號>`，30 分鐘內不重複），由既有每分鐘輪詢執行；不做同步爬取 |
 | 30 | Telegram 綁定 | 綁定碼＋`getUpdates` 比對 `/start <碼>`，本機即可用、免 webhook；發送失敗不影響站內通知 |
+| 31 | 技術訊號 | crawler `analytics/signals.py` 盤後偵測、存 `stocks.technical_signals` 事件表（完整歷史）；每則標多／空方、不做綜合分數；`signals` 任務完成（筆數 > 0）才評估訊號訂閱 |
+| 32 | 訊號通知 | 逐檔訂閱與範圍（自選股／分組）每日彙整分兩張表，皆以 `last_notified_date` 保證同日只通知一次；沿用站內通知＋Telegram |
+| 33 | 回測 | api 內建預設策略（均線、KD、MACD、突破、RSI 反彈），次日開盤成交；預設計手續費與證交稅（規則與持股頁 `fee.ts` 同步維護），不做自訂條件回測 |
+| 34 | 圖表偏好與畫線 | 指標參數（`chart_preferences`）與畫線（`chart_drawings`）存帳號跨裝置同步；桌機編輯、手機只套用／顯示 |
