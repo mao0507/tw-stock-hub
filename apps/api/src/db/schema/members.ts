@@ -179,6 +179,21 @@ export const signalSubscriptions = members.table(
   ],
 )
 
+/** 範圍訊號訂閱（#34）：全部自選股（group_id 為 NULL）或某分組，每個交易日彙整成一則通知 */
+export const signalDigests = members.table(
+  'signal_digests',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: userId(),
+    groupId: uuid('group_id').references(() => watchlistGroups.id, { onDelete: 'cascade' }),
+    signals: varchar('signals', { length: 40 }).array().notNull(),
+    isActive: boolean('is_active').notNull().default(true),
+    lastNotifiedDate: date('last_notified_date', { mode: 'string' }),
+    createdAt: createdAt(),
+  },
+  (t) => [index('idx_signal_digests_user').on(t.userId)],
+)
+
 /** 站內通知（#26）；Telegram 等通道的送出狀態另記 */
 export const notifications = members.table(
   'notifications',

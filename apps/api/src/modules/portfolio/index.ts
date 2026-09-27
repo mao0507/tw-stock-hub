@@ -7,6 +7,7 @@ import { type AuthEnv, requireAuth } from '../../middleware/auth.js'
 import { createAlertsRepository, type Triggered } from './alerts.repository.js'
 import { createAlertRoutes } from './alerts.routes.js'
 import { createSignalRoutes } from './signals.routes.js'
+import { createSignalDigestsRepository } from './signal-digests.repository.js'
 import { createSignalSubsRepository } from './signal-subs.repository.js'
 import { createSignalSubRoutes } from './signal-subs.routes.js'
 import { createTelegramRoutes } from './telegram.routes.js'
@@ -202,9 +203,12 @@ export async function evaluateAlerts(db: Db, telegram?: Telegram): Promise<Trigg
   return triggered
 }
 
-/** 訊號任務完成時呼叫：評估逐檔訊號訂閱（#33），同日同訂閱只通知一次 */
+/** 訊號任務完成時呼叫：評估逐檔訂閱（#33）與範圍彙整（#34），同日同訂閱只通知一次 */
 export async function evaluateSignalSubscriptions(db: Db, telegram?: Telegram): Promise<Triggered[]> {
-  const triggered = await createSignalSubsRepository(db).evaluate()
+  const triggered = [
+    ...(await createSignalSubsRepository(db).evaluate()),
+    ...(await createSignalDigestsRepository(db).evaluate()),
+  ]
   await pushTelegram(db, triggered, telegram)
   return triggered
 }

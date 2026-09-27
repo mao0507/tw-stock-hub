@@ -116,7 +116,7 @@ const fmtTime = (iso: string) => new Date(iso).toLocaleString('zh-TW', { month: 
           >
             {{ n.title }}
           </div>
-          <div class="mt-0.5 text-xs text-gray-600">
+          <div class="mt-0.5 whitespace-pre-line text-xs text-gray-600">
             {{ n.body }}
           </div>
           <div class="mt-1 font-mono text-[11px] text-gray-500">

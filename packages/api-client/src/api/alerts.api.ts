@@ -1,4 +1,4 @@
-import type { AlertItem, CreateAlertForm, NotificationList, SignalSubscription } from '@tw-stock-hub/types'
+import type { AlertItem, CreateAlertForm, NotificationList, SignalDigest, SignalSubscription } from '@tw-stock-hub/types'
 import { apiClient } from '../axios'
 
 const BASE = '/api/portfolio'
@@ -21,6 +21,25 @@ export const alertsApi = {
 
   async deleteSignalSubscription(id: string): Promise<void> {
     await apiClient.delete(`${BASE}/signal-subscriptions/${id}`)
+  },
+
+  async getSignalDigests(): Promise<SignalDigest[]> {
+    const { data } = await apiClient.get<SignalDigest[]>(`${BASE}/signal-digests`)
+    return data
+  },
+
+  async createSignalDigest(form: { groupId: string | null; signals: string[] }): Promise<SignalDigest> {
+    const { data } = await apiClient.post<SignalDigest>(`${BASE}/signal-digests`, form)
+    return data
+  },
+
+  async setSignalDigestActive(id: string, isActive: boolean): Promise<SignalDigest> {
+    const { data } = await apiClient.patch<SignalDigest>(`${BASE}/signal-digests/${id}`, { isActive })
+    return data
+  },
+
+  async deleteSignalDigest(id: string): Promise<void> {
+    await apiClient.delete(`${BASE}/signal-digests/${id}`)
   },
 
   async getAlerts(): Promise<AlertItem[]> {

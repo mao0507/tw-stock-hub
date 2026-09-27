@@ -72,3 +72,14 @@ export interface SignalSubscription {
   lastNotifiedDate: string | null
   createdAt: string
 }
+
+/** 範圍訊號訂閱（#34）：全部自選股（groupId 為 null）或某分組，每天彙整成一則通知 */
+export interface SignalDigest {
+  id: string
+  groupId: string | null
+  groupName: string | null
+  signals: string[]
+  isActive: boolean
+  lastNotifiedDate: string | null
+  createdAt: string
+}
