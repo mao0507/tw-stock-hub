@@ -27,6 +27,8 @@ export const screenerFilterSchema = z
     revenueYoyMin: range(-1000, 1000),
     dividendYearsMin: z.number().int('請輸入整數').min(1).max(50).optional(),
     bigHolderMin: range(0, 100),
+    signals: z.array(z.string().regex(/^[a-z0-9_]{3,40}$/)).max(30).optional(),
+    signalMatch: z.enum(['any', 'all']).optional(),
   })
   .refine((d) => d.priceMin === undefined || d.priceMax === undefined || d.priceMin <= d.priceMax, {
     message: '股價下限不能大於上限', path: ['priceMax'],

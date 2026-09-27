@@ -22,6 +22,7 @@ type Item = {
   revenueYoy: number | null
   dividendYears: number
   bigHolderPct: number | null
+  signals: string[]
 }
 type Res = { total: number; items: Item[] }
 
@@ -85,6 +86,12 @@ beforeAll(async () => {
       ('7401', '112', '1', 1, 0), ('7401', '113', '1', 1, 0), ('7401', '114', '1', 1, 0),
       ('7402', '112', '1', 1, 0), ('7402', '114', '1', 1, 0), ('7402', '113', '1', 0, 0)`
   await a`
+    INSERT INTO stocks.technical_signals (date, stock_id, signal, side, "values") VALUES
+      ('2026-09-23', '7403', 'kd_low_golden_cross', 'bull', '{}'),
+      ('2026-09-24', '7401', 'breakout_60d_high', 'bull', '{}'),
+      ('2026-09-24', '7401', 'volume_spike', 'bull', '{}'),
+      ('2026-09-24', '7402', 'ma_death_cross', 'bear', '{}')`
+  await a`
     INSERT INTO stocks.shareholder_dispersion (date, stock_id, big_holder_pct) VALUES
       ('2026-09-18', '7401', 60), ('2026-09-18', '7402', 30)`
 }, 120_000)
@@ -137,6 +144,18 @@ describe('POST /screener', () => {
     expect(await ids({ dividendYearsMin: 2 })).toEqual(['7401'])
     expect(await ids({ dividendYearsMin: 1 })).toEqual(['7401', '7402'])
     expect(await ids({ bigHolderMin: 50 })).toEqual(['7401'])
+  })
+
+  it('訊號條件：今天出現任一／全部指定訊號，結果附當日訊號；非當日的訊號不算', async () => {
+    expect(await ids({ signals: ['breakout_60d_high', 'ma_death_cross'] })).toEqual(['7401', '7402'])
+    expect(await ids({ signals: ['breakout_60d_high', 'volume_spike'], signalMatch: 'all' })).toEqual(['7401'])
+    expect(await ids({ signals: ['breakout_60d_high', 'ma_death_cross'], signalMatch: 'all' })).toEqual([])
+    expect(await ids({ signals: ['kd_low_golden_cross'] })).toEqual([])
+    expect(await ids({ signals: ['ma_death_cross'], market: 'TWSE' })).toEqual([])
+    const { body } = await screen({})
+    expect(body.items.find((i) => i.stockId === '7401')!.signals).toEqual(['breakout_60d_high', 'volume_spike'])
+    expect(body.items.find((i) => i.stockId === '7403')!.signals).toEqual([])
+    expect((await screen({ signals: ['bad code!'] })).status).toBe(400)
   })
 
   it('條件以 AND 組合', async () => {

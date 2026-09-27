@@ -27,6 +27,9 @@ export interface ScreenerFilter {
   revenueYoyMin?: number
   dividendYearsMin?: number
   bigHolderMin?: number
+  // 技術訊號（當日）
+  signals?: string[]
+  signalMatch?: 'any' | 'all'
   // 排序與筆數
   sortBy?: ScreenerSortKey
   order?: 'asc' | 'desc'
@@ -59,6 +62,8 @@ export interface ScreenerResult {
   revenueYoy: number | null
   dividendYears: number
   bigHolderPct: number | null
+  /** 當日技術訊號代碼 */
+  signals: string[]
 }
 
 export interface ScreenerResponse {

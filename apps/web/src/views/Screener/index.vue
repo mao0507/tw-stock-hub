@@ -4,7 +4,7 @@ import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { stockApi } from '@tw-stock-hub/api-client'
 import { screenerFilterSchema } from '@tw-stock-hub/zod-schemas'
-import type { ScreenerResult, ScreenerSortKey, Market } from '@tw-stock-hub/types'
+import { SIGNAL_META, signalLabel, type ScreenerResult, type ScreenerSortKey, type Market, type SignalCode } from '@tw-stock-hub/types'
 import {
   DataTable, AppInput, AppSelect, AppButton,
   ChangePercent, LoadingSkeleton, EmptyState,
@@ -37,6 +37,8 @@ const empty = () => ({
   bullishAlignment: false,
   aboveMa20: false,
   aboveMa60: false,
+  signals: [] as string[],
+  signalMatch: 'any' as 'any' | 'all',
   sortBy: 'volume' as ScreenerSortKey,
 })
 const filter = reactive(empty())
@@ -46,6 +48,8 @@ const PRESETS: { label: string; desc: string; set: Partial<ReturnType<typeof emp
   { label: '強勢趨勢', desc: '均線多頭排列、RS ≥ 80', set: { bullishAlignment: true, rsMin: 80, sortBy: 'rsScore' } },
   { label: '法人加碼', desc: '外資買超 ≥ 500 張、站上 MA20', set: { foreignNetMin: 500, aboveMa20: true, sortBy: 'foreignNet' } },
 ]
+
+const SIGNAL_OPTIONS = (Object.keys(SIGNAL_META) as SignalCode[]).map((code) => ({ code, ...SIGNAL_META[code] }))
 
 const marketOptions = [
   { label: '全部', value: 'ALL' },
@@ -77,6 +81,7 @@ const columns = [
   { key: 'grossMargin', label: '毛利率%', align: 'right' as const, sortable: true },
   { key: 'revenueYoy', label: '營收年增%', align: 'right' as const, sortable: true },
   { key: 'dividendYears', label: '連配(年)', align: 'right' as const, sortable: true },
+  { key: 'signals', label: '今日訊號', align: 'left' as const },
 ]
 
 function buildPayload() {
@@ -89,6 +94,8 @@ function buildPayload() {
     bullishAlignment: filter.bullishAlignment || undefined,
     aboveMa20: filter.aboveMa20 || undefined,
     aboveMa60: filter.aboveMa60 || undefined,
+    signals: filter.signals.length ? filter.signals : undefined,
+    signalMatch: filter.signals.length > 1 ? filter.signalMatch : undefined,
   }
 }
 
@@ -140,7 +147,8 @@ function goToStock(id: string): void {
 
 function exportCsv(): void {
   const headers = columns.map((c) => c.label)
-  const rows = results.value.map((r) => columns.map((c) => r[c.key as keyof ScreenerResult] ?? ''))
+  const rows = results.value.map((r) => columns.map((c) =>
+    c.key === 'signals' ? r.signals.map(signalLabel).join('、') : r[c.key as keyof ScreenerResult] ?? ''))
   const csv = [headers, ...rows].map((row) => row.map((v) => `"${String(v)}"`).join(',')).join('\n')
   const url = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' }))
   const a = document.createElement('a')
@@ -150,6 +158,9 @@ function exportCsv(): void {
   URL.revokeObjectURL(url)
 }
 
+// 爆量的多空依當日漲跌（與訊號偵測一致），其他訊號用固定多空
+const signalSide = (code: string, r: ScreenerResult) =>
+  code === 'volume_spike' ? ((r.changePct ?? 0) > 0 ? 'bull' : 'bear') : SIGNAL_META[code as SignalCode]?.side
 const asNum = (v: unknown) => (v == null ? null : Number(v))
 const fmt = (v: unknown, dp = 2) => (v == null ? '—' : (v as number).toLocaleString('en-US', { maximumFractionDigits: dp }))
 </script>
@@ -363,6 +374,58 @@ const fmt = (v: unknown, dp = 2) => (v == null ? '—' : (v as number).toLocaleS
         </div>
       </section>
 
+      <section class="panel lg:col-span-3">
+        <div class="panel-hd items-center">
+          <h2 class="panel-title">
+            今日技術訊號
+          </h2>
+          <div
+            v-if="filter.signals.length > 1"
+            class="bs-toggle"
+            role="radiogroup"
+            aria-label="訊號符合方式"
+          >
+            <button
+              type="button"
+              role="radio"
+              :aria-checked="filter.signalMatch === 'any'"
+              :class="['bs', filter.signalMatch === 'any' && 'bg-ink text-white']"
+              @click="filter.signalMatch = 'any'"
+            >
+              出現任一
+            </button>
+            <button
+              type="button"
+              role="radio"
+              :aria-checked="filter.signalMatch === 'all'"
+              :class="['bs', filter.signalMatch === 'all' && 'bg-ink text-white']"
+              @click="filter.signalMatch = 'all'"
+            >
+              全部出現
+            </button>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-1.5 p-4">
+          <label
+            v-for="s in SIGNAL_OPTIONS"
+            :key="s.code"
+            :class="['pill inline-flex cursor-pointer items-center gap-1.5', filter.signals.includes(s.code) && 'pill-on']"
+          >
+            <input
+              v-model="filter.signals"
+              type="checkbox"
+              :value="s.code"
+              class="sr-only"
+            >
+            <span :class="s.side === 'bull' ? 'is-up' : 'is-dn'">{{ s.side === 'bull' ? '▲' : '▼' }}</span>
+            {{ s.label }}
+          </label>
+        </div>
+        <p class="px-4 pb-4 text-xs text-gray-500">
+          以最新交易日盤後偵測的訊號為準；勾選多個時可選「出現任一」或「全部出現」。
+        </p>
+      </section>
+
       <div class="flex flex-wrap items-end gap-3 lg:col-span-3">
         <div class="w-48">
           <AppSelect
@@ -472,6 +535,16 @@ const fmt = (v: unknown, dp = 2) => (v == null ? '—' : (v as number).toLocaleS
           </template>
           <template #cell-dividendYears="{ value }">
             <span class="font-mono text-xs">{{ value }}</span>
+          </template>
+          <template #cell-signals="{ row }">
+            <span class="flex flex-wrap gap-x-2">
+              <span
+                v-for="code in (row as ScreenerResult).signals"
+                :key="code"
+                class="whitespace-nowrap text-xs"
+                :class="signalSide(code, row as ScreenerResult) === 'bear' ? 'is-dn' : 'is-up'"
+              >{{ signalLabel(code) }}</span>
+            </span>
           </template>
         </DataTable>
       </div>

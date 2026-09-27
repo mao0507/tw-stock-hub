@@ -47,6 +47,8 @@ const Filter = z
     revenueYoyMin: pct(),
     dividendYearsMin: z.number().int().min(1).max(50).optional(),
     bigHolderMin: z.number().min(0).max(100).optional(),
+    signals: z.array(z.string().regex(/^[a-z0-9_]{3,40}$/)).max(30).optional().describe('當日出現的技術訊號代碼'),
+    signalMatch: z.enum(['any', 'all']).default('any').describe('any：出現任一；all：全部都出現'),
     sortBy: z.enum(Object.keys(SORT) as [keyof typeof SORT, ...(keyof typeof SORT)[]]).default('volume'),
     order: z.enum(['asc', 'desc']).default('desc'),
     limit: z.number().int().min(1).max(500).default(200),
@@ -84,6 +86,7 @@ const Item = z.object({
   revenueYoy: z.number().nullable(),
   dividendYears: z.number(),
   bigHolderPct: z.number().nullable(),
+  signals: z.array(z.string()).describe('當日技術訊號代碼'),
 })
 
 const route = createRoute({
@@ -122,6 +125,10 @@ function conditions(f: Filter): SQL[] {
   add(f.revenueYoyMin, sql`revenue_yoy >= ${f.revenueYoyMin}`)
   add(f.dividendYearsMin, sql`dividend_years >= ${f.dividendYearsMin}`)
   add(f.bigHolderMin, sql`big_holder_pct >= ${f.bigHolderMin}`)
+  if (f.signals?.length) {
+    const arr = sql`ARRAY[${sql.join(f.signals.map((x) => sql`${x}`), sql`, `)}]::text[]`
+    c.push(f.signalMatch === 'all' ? sql`signals @> ${arr}` : sql`signals && ${arr}`)
+  }
   return c
 }
 
@@ -136,6 +143,10 @@ const base = (d: string) => sql`
   g AS (SELECT stock_id, y, y + ROW_NUMBER() OVER (PARTITION BY stock_id ORDER BY y DESC) AS grp FROM dy),
   top AS (SELECT DISTINCT ON (stock_id) stock_id, grp FROM g ORDER BY stock_id, y DESC),
   streak AS (SELECT g.stock_id, COUNT(*)::int AS years FROM g JOIN top USING (stock_id, grp) GROUP BY g.stock_id),
+  sig AS (
+    SELECT stock_id, array_agg(signal::text ORDER BY signal) AS signals
+    FROM stocks.technical_signals WHERE date = ${d} GROUP BY stock_id
+  ),
   base AS (
     SELECT s.id, s.name, s.market::text AS market, s.sector,
       q.close::float8 AS close, q.change_pct::float8 AS change_pct, (q.volume / 1000)::float8 AS volume,
@@ -147,7 +158,8 @@ const base = (d: string) => sql`
       q.close > ti.ma60 AS above_ma60,
       v.pe::float8 AS pe, v.pb::float8 AS pb, v.dividend_yield::float8 AS dividend_yield,
       f.gross_margin::float8 AS gross_margin, r.yoy_pct::float8 AS revenue_yoy,
-      COALESCE(st.years, 0) AS dividend_years, sd.big_holder_pct::float8 AS big_holder_pct
+      COALESCE(st.years, 0) AS dividend_years, sd.big_holder_pct::float8 AS big_holder_pct,
+      COALESCE(sig.signals, '{}'::text[]) AS signals
     FROM stocks.stocks s
     JOIN stocks.daily_quotes q ON q.stock_id = s.id AND q.date = ${d}
     LEFT JOIN stocks.institutional_trading i ON i.stock_id = s.id AND i.date = ${d}
@@ -170,6 +182,7 @@ const base = (d: string) => sql`
       WHERE stock_id = s.id AND date BETWEEN ${d}::date - 60 AND ${d} ORDER BY date DESC LIMIT 1
     ) sd ON TRUE
     LEFT JOIN streak st ON st.stock_id = s.id
+    LEFT JOIN sig ON sig.stock_id = s.id
     WHERE s.is_active
   )`
 
@@ -180,6 +193,7 @@ type Row = {
   rs_score: number | null; bullish_alignment: boolean; above_ma20: boolean | null; above_ma60: boolean | null
   pe: number | null; pb: number | null; dividend_yield: number | null
   gross_margin: number | null; revenue_yoy: number | null; dividend_years: number; big_holder_pct: number | null
+  signals: string[]
   total: string
 }
 
@@ -205,7 +219,7 @@ export function registerScreenerRoutes(app: OpenAPIHono, db: Db) {
           rsScore: x.rs_score, bullishAlignment: x.bullish_alignment, aboveMa20: x.above_ma20, aboveMa60: x.above_ma60,
           pe: x.pe, pb: x.pb, dividendYield: x.dividend_yield,
           grossMargin: x.gross_margin, revenueYoy: x.revenue_yoy,
-          dividendYears: x.dividend_years, bigHolderPct: x.big_holder_pct,
+          dividendYears: x.dividend_years, bigHolderPct: x.big_holder_pct, signals: x.signals,
         })),
       }
     })
