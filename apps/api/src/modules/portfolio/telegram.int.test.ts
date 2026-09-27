@@ -62,8 +62,8 @@ describe('Telegram 綁定', () => {
     expect((await send(app, alice.cookie, 'POST', '/telegram/link')).status).toBe(503)
   })
 
-  it('產生綁定碼 → 尚未傳給 bot 時確認失敗 → 傳送後確認成功 → 解除綁定', async () => {
-    const { tg, startCodes } = fakeTelegram()
+  it('產生綁定碼 → 尚未傳給 bot 時確認失敗 → 傳送後確認成功（bot 回確認訊息）→ 解除綁定', async () => {
+    const { tg, sent, startCodes } = fakeTelegram()
     const app = appWith(tg)
     const link = (await (await send(app, alice.cookie, 'POST', '/telegram/link')).json()) as { code: string; url: string }
     expect(link.code).toMatch(/^[A-Z0-9]{8}$/)
@@ -72,11 +72,20 @@ describe('Telegram 綁定', () => {
     expect((await send(app, alice.cookie, 'POST', '/telegram/link/confirm')).status).toBe(409)
     startCodes.set(link.code, '123456')
     expect((await send(app, alice.cookie, 'POST', '/telegram/link/confirm')).status).toBe(200)
+    expect(sent).toEqual([{ chatId: '123456', text: expect.stringContaining('綁定成功') }])
     expect(await (await send(app, alice.cookie, 'GET', '/telegram')).json())
       .toEqual({ enabled: true, linked: true, botUsername: 'tw_stock_hub_bot' })
 
     expect((await send(app, alice.cookie, 'DELETE', '/telegram')).status).toBe(204)
     expect(((await (await send(app, alice.cookie, 'GET', '/telegram')).json()) as { linked: boolean }).linked).toBe(false)
+  })
+
+  it('確認訊息發送失敗不影響綁定', async () => {
+    const { tg, startCodes } = fakeTelegram({ failSend: true })
+    const app = appWith(tg)
+    const { code } = (await (await send(app, alice.cookie, 'POST', '/telegram/link')).json()) as { code: string }
+    startCodes.set(code, '123456')
+    expect((await send(app, alice.cookie, 'POST', '/telegram/link/confirm')).status).toBe(200)
   })
 
   it('綁定碼過期後無法確認', async () => {

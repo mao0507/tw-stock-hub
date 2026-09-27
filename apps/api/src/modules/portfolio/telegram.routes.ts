@@ -82,6 +82,9 @@ export function createTelegramRoutes(db: Db, tg: Telegram) {
     if (!chatId) return c.json({ error: '還沒收到綁定訊息，請先在 Telegram 對 bot 按「開始」' }, 409)
     await db.update(users).set({ telegramChatId: chatId, telegramLinkCode: null, telegramLinkExpiresAt: null })
       .where(eq(users.id, uid(c)))
+    await tg.send(chatId, '綁定成功，之後盤後提醒會推送到這裡。').catch((err: unknown) => {
+      console.error('[api] Telegram 綁定確認訊息發送失敗', err instanceof Error ? err.message : err)
+    })
     return c.json({ linked: true as const }, 200)
   })
 
