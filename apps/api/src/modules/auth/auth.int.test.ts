@@ -63,6 +63,27 @@ describe('Google 登入 callback', () => {
     expect(after!.last_login_at.getTime()).toBeGreaterThan(before!.last_login_at.getTime())
   })
 
+  it('已存在同 email 的帳號（手動建立、Google ID 不同）：沿用該帳號並更新 Google ID，資料不遺失', async () => {
+    const [pre] = await t.admin<{ id: string }[]>`
+      INSERT INTO members.users (email, google_id, nickname) VALUES ('friend@example.com', 'dev-local', '手動建立')
+      RETURNING id`
+    const res = await login({ id: 'g-real', email: 'friend@example.com', verified_email: true, name: '朋友' })
+    expect(res.status).toBe(302)
+    const body = await (await app.request('/api/auth/me', { headers: { Cookie: tokenFrom(res) } })).json()
+    expect(body).toMatchObject({ id: pre!.id, email: 'friend@example.com', nickname: '手動建立' })
+    const [row] = await t.admin`SELECT google_id FROM members.users WHERE id = ${pre!.id}`
+    expect(row!.google_id).toBe('g-real')
+  })
+
+  it('同一 Google 帳號改了 email（新 email 也在名單內）：更新原帳號，不另開新帳號', async () => {
+    const first = await login({ id: 'g-move', email: 'me@example.com', verified_email: true, name: '搬家' })
+    const before = await (await app.request('/api/auth/me', { headers: { Cookie: tokenFrom(first) } })).json() as { id: string }
+    await t.admin`DELETE FROM members.users WHERE email = 'friend@example.com'`
+    const moved = await login({ id: 'g-move', email: 'friend@example.com', verified_email: true, name: '搬家' })
+    const after = await (await app.request('/api/auth/me', { headers: { Cookie: tokenFrom(moved) } })).json() as { id: string; email: string }
+    expect(after).toMatchObject({ id: before.id, email: 'friend@example.com' })
+  })
+
   it('不在邀請名單：導回登入頁並帶 not_invited，不發 cookie、不建使用者', async () => {
     const res = await login({ ...me, id: 'g-x', email: 'stranger@example.com' })
     expect(res.status).toBe(302)
