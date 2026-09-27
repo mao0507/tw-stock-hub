@@ -6,6 +6,8 @@ import {
   SelectScrollUpButton, SelectScrollDownButton,
 } from 'radix-vue'
 import { cn } from '../../lib/utils'
+import IconChevronUp from '~icons/lucide/chevron-up'
+import IconChevronDown from '~icons/lucide/chevron-down'
 
 interface SelectOption {
   label: string
@@ -79,7 +81,7 @@ const isDark = computed(() => props.variant === 'dark')
           position="popper"
         >
           <SelectScrollUpButton :class="['flex h-6 items-center justify-center', isDark ? 'text-gray-500' : 'text-gray-400']">
-            ▲
+            <IconChevronUp aria-hidden="true" />
           </SelectScrollUpButton>
           <SelectViewport class="p-1">
             <SelectItem
@@ -108,7 +110,7 @@ const isDark = computed(() => props.variant === 'dark')
             </SelectItem>
           </SelectViewport>
           <SelectScrollDownButton :class="['flex h-6 items-center justify-center', isDark ? 'text-gray-500' : 'text-gray-400']">
-            ▼
+            <IconChevronDown aria-hidden="true" />
           </SelectScrollDownButton>
         </SelectContent>
       </SelectPortal>

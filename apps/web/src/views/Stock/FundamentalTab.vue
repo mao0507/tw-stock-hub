@@ -11,6 +11,7 @@ import type {
 import TrendChart from './TrendChart.vue'
 import type { TrendSeries } from './trend'
 import RevenueChart from './RevenueChart.vue'
+import IconArrowRight from '~icons/lucide/arrow-right'
 
 type FundView = 'key' | 'profit' | 'growth' | 'value' | 'safety' | 'holders'
 
@@ -960,7 +961,7 @@ function pieColor(i: number): string {
               class="fund-more"
               @click="emit('go', 'institutional')"
             >
-              籌碼分析 →
+              籌碼分析 <IconArrowRight class="inline align-[-2px]" aria-hidden="true" />
             </button>
           </div>
           <div

@@ -4,6 +4,9 @@ import axios from 'axios'
 import { useECharts, STOCK_COLORS } from '@tw-stock-hub/charts'
 import type { ECOption } from '@tw-stock-hub/charts'
 import { useStaggerIn, AppSelect, AppDatePicker, AppAlertDialog } from '@tw-stock-hub/ui'
+import IconX from '~icons/lucide/x'
+import IconRefresh from '~icons/lucide/refresh-cw'
+import IconAlert from '~icons/lucide/triangle-alert'
 
 const rootEl = ref<HTMLElement>()
 useStaggerIn(rootEl, 'section')
@@ -297,9 +300,10 @@ function relativeTime(dateStr: string | null): string {
       <span>[{{ triggerResult.crawler }}] {{ triggerResult.message }}</span>
       <button
         class="text-xs opacity-60 hover:opacity-100"
+        aria-label="關閉"
         @click="triggerResult = null"
       >
-        ✕
+        <IconX aria-hidden="true" />
       </button>
     </div>
 
@@ -413,10 +417,10 @@ function relativeTime(dateStr: string | null): string {
           執行記錄查詢
         </h2>
         <button
-          class="text-xs text-gray-500 hover:text-gray-900"
+          class="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-900"
           @click="void fetchLogs()"
         >
-          ↻ 刷新
+          <IconRefresh aria-hidden="true" /> 刷新
         </button>
       </div>
 
@@ -509,7 +513,10 @@ function relativeTime(dateStr: string | null): string {
                   colspan="5"
                   class="bg-up/[0.06] font-mono text-[11px] text-up"
                 >
-                  ⚠ {{ log.errorMessage }}
+                  <IconAlert
+                    class="mr-1 inline align-[-2px]"
+                    aria-hidden="true"
+                  />{{ log.errorMessage }}
                 </td>
               </tr>
             </template>

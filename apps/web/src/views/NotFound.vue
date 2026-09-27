@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
+import IconChart from '~icons/lucide/chart-column'
 const router = useRouter()
 </script>
 
 <template>
   <div class="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
-    <div class="text-6xl">
-      📊
-    </div>
+    <IconChart
+      class="text-6xl text-gray-300"
+      aria-hidden="true"
+    />
     <h1 class="text-2xl font-bold text-gray-800">
       找不到此頁面
     </h1>

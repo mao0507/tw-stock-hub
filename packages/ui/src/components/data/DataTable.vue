@@ -1,5 +1,8 @@
 <script setup lang="ts" generic="T extends Record<string, unknown>">
 import { ref } from 'vue'
+import IconArrowUp from '~icons/lucide/arrow-up'
+import IconArrowDown from '~icons/lucide/arrow-down'
+import IconArrowUpDown from '~icons/lucide/arrow-up-down'
 
 interface Column<Row> {
   key: keyof Row | string
@@ -64,8 +67,10 @@ const alignClass = (align?: string) => ({
           >
             <span class="inline-flex items-center gap-1">
               {{ col.label }}
-              <span v-if="col.sortable" class="text-gray-300">
-                {{ sortKey === String(col.key) ? (sortOrder === 'asc' ? '↑' : '↓') : '↕' }}
+              <span v-if="col.sortable" class="text-gray-300" aria-hidden="true">
+                <IconArrowUpDown v-if="sortKey !== String(col.key)" />
+                <IconArrowUp v-else-if="sortOrder === 'asc'" />
+                <IconArrowDown v-else />
               </span>
             </span>
           </th>

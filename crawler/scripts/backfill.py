@@ -69,10 +69,10 @@ async def backfill_single(crawler_class, target_date: date, force: bool = False)
         crawler.set_target_date(target_date)
     try:
         count = await crawler.run()
-        logger.success(f"  ✓ {target_date} → {count} records")
+        logger.success(f"  OK {target_date} → {count} records")
         return True
     except Exception as e:
-        logger.error(f"  ✗ {target_date} → {e}")
+        logger.error(f"  FAIL {target_date} → {e}")
         return False
 
 

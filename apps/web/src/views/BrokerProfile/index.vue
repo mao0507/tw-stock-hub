@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { stockApi } from '@tw-stock-hub/api-client'
 import type { BrokerProfile } from '@tw-stock-hub/types'
 import { LoadingSkeleton } from '@tw-stock-hub/ui'
+import IconArrowLeft from '~icons/lucide/arrow-left'
 
 const route = useRoute()
 const router = useRouter()
@@ -48,10 +49,10 @@ const maxHist = computed(() =>
 <template>
   <div class="space-y-4">
     <button
-      class="text-sm text-gray-400 hover:text-ink"
+      class="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-ink"
       @click="router.back()"
     >
-      ← 返回分點總覽
+      <IconArrowLeft aria-hidden="true" /> 返回分點總覽
     </button>
 
     <header class="page-head">

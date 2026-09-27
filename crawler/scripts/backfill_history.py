@@ -69,7 +69,7 @@ async def run_one_day(crawler_class, target_date: date) -> bool:
         await crawler.crawl()
         return True
     except Exception as e:
-        logger.warning(f"  ✗ {target_date} {crawler_class.__name__}: {e}")
+        logger.warning(f"  FAIL {target_date} {crawler_class.__name__}: {e}")
         return False
 
 

@@ -5,6 +5,7 @@ import { IndexLineChart } from '@tw-stock-hub/charts'
 import { NewsFeed } from '@tw-stock-hub/ui'
 import { stockApi } from '@tw-stock-hub/api-client'
 import type { DailyQuote, Institutional, Margin, Valuation, StockScore } from '@tw-stock-hub/types'
+import IconArrowRight from '~icons/lucide/arrow-right'
 
 type Period = '1M' | '3M' | '6M' | '1Y'
 type TabKey = 'technical' | 'fundamental' | 'institutional' | 'margin' | 'broker' | 'dividend' | 'backtest' | 'news' | 'mops'
@@ -106,7 +107,7 @@ function fmtNet(v: number): string {
       <div class="panel lg:col-span-2">
         <div class="panel-hd">
           <span class="panel-title">收盤走勢</span>
-          <button class="ov-more" @click="emit('go', 'technical')">技術分析 →</button>
+          <button class="ov-more" @click="emit('go', 'technical')">技術分析 <IconArrowRight class="inline align-[-2px]" aria-hidden="true" /></button>
         </div>
         <div class="p-3">
           <div v-if="!lineData.length" class="ov-empty">無行情資料</div>
@@ -125,7 +126,7 @@ function fmtNet(v: number): string {
         <div class="panel">
           <div class="panel-hd">
             <span class="panel-title">估值與體質</span>
-            <button class="ov-more" @click="emit('go', 'fundamental')">基本面 →</button>
+            <button class="ov-more" @click="emit('go', 'fundamental')">基本面 <IconArrowRight class="inline align-[-2px]" aria-hidden="true" /></button>
           </div>
           <div class="space-y-3 p-4">
             <div v-if="score" class="flex items-center gap-3">
@@ -157,7 +158,7 @@ function fmtNet(v: number): string {
         <div class="panel">
           <div class="panel-hd">
             <span class="panel-title">籌碼速覽<span class="ml-1.5 text-xs font-normal text-gray-400">近 {{ inst5?.days ?? 0 }} 日</span></span>
-            <button class="ov-more" @click="emit('go', 'institutional')">法人動向 →</button>
+            <button class="ov-more" @click="emit('go', 'institutional')">法人動向 <IconArrowRight class="inline align-[-2px]" aria-hidden="true" /></button>
           </div>
           <div class="space-y-2.5 p-4">
             <div v-if="!inst5" class="ov-empty">無法人資料</div>
@@ -205,7 +206,7 @@ function fmtNet(v: number): string {
     <div class="panel">
       <div class="panel-hd">
         <span class="panel-title">近期新聞</span>
-        <button class="ov-more" @click="emit('go', 'news')">更多 →</button>
+        <button class="ov-more" @click="emit('go', 'news')">更多 <IconArrowRight class="inline align-[-2px]" aria-hidden="true" /></button>
       </div>
       <div class="max-h-[360px] overflow-y-auto">
         <NewsFeed :stock-id="stockId" :page-size="5" />

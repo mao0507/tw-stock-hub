@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { usePortfolioStore } from '@/stores/portfolio.store'
 import { useWatchlistStore } from '@/stores/watchlist.store'
 import LotFormModal from '@/views/Portfolio/LotFormModal.vue'
+import IconStar from '~icons/lucide/star'
 
 // 個股頁快捷入口：加入自選（可選分組）、記錄買入（預填代號與最新收盤價）
 interface Props {
@@ -109,7 +110,11 @@ async function submitBuy(form: CreateLotForm): Promise<void> {
         :loading="busy"
         @click="onWatchClick"
       >
-        {{ watched ? '★ 已追蹤' : '☆ 加入自選' }}
+        <IconStar
+          :class="['mr-1', watched && 'fill-current']"
+          aria-hidden="true"
+        />
+        {{ watched ? '已追蹤' : '加入自選' }}
       </AppButton>
       <AppButton
         data-test="buy"

@@ -205,7 +205,7 @@ export async function evaluateAlerts(db: Db, telegram?: Telegram): Promise<Trigg
     for (const t of triggered) {
       const chatId = chats.get(t.userId)
       if (!chatId) continue
-      await telegram.send(chatId, `🔔 ${t.title}
+      await telegram.send(chatId, `${t.title}
 ${t.body}`).catch((err: unknown) => {
         console.error('[api] Telegram 推送失敗', t.notificationId, err instanceof Error ? err.message : err)
       })

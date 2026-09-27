@@ -6,6 +6,8 @@ import type { WatchlistGroup, WatchlistItem } from '@tw-stock-hub/types'
 import { AppButton, AppInput, AppModal, EmptyState, LoadingSkeleton, StockPriceTag } from '@tw-stock-hub/ui'
 import { useWatchlistStore } from '@/stores/watchlist.store'
 import GroupFormModal from './GroupFormModal.vue'
+import IconArrowUp from '~icons/lucide/arrow-up'
+import IconArrowDown from '~icons/lucide/arrow-down'
 
 const router = useRouter()
 const store = useWatchlistStore()
@@ -168,7 +170,7 @@ function goToStock(id: string): void {
             aria-label="分組上移"
             @click="run(() => store.moveGroup(section.group!.id, -1), '調整順序失敗')"
           >
-            ↑
+            <IconArrowUp aria-hidden="true" />
           </AppButton>
           <AppButton
             size="sm"
@@ -177,7 +179,7 @@ function goToStock(id: string): void {
             aria-label="分組下移"
             @click="run(() => store.moveGroup(section.group!.id, 1), '調整順序失敗')"
           >
-            ↓
+            <IconArrowDown aria-hidden="true" />
           </AppButton>
           <AppButton
             size="sm"
@@ -261,7 +263,7 @@ function goToStock(id: string): void {
                 aria-label="上移"
                 @click="run(() => store.moveItem(item.stockId, -1), '調整順序失敗')"
               >
-                ↑
+                <IconArrowUp aria-hidden="true" />
               </AppButton>
               <AppButton
                 size="sm"
@@ -270,7 +272,7 @@ function goToStock(id: string): void {
                 aria-label="下移"
                 @click="run(() => store.moveItem(item.stockId, 1), '調整順序失敗')"
               >
-                ↓
+                <IconArrowDown aria-hidden="true" />
               </AppButton>
               <AppButton
                 size="sm"

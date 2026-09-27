@@ -3,7 +3,7 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": { "@/*": ["src/*"] },
-    "types": ["vitest/globals"]
+    "types": ["vitest/globals", "unplugin-icons/types/vue"]
   },
   "include": ["src/**/*", "env.d.ts"],
   "exclude": ["node_modules", "dist"]

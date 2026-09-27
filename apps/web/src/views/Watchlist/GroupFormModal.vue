@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue'
 import type { WatchlistGroup } from '@tw-stock-hub/types'
 import { AppButton, AppInput, AppModal } from '@tw-stock-hub/ui'
+import IconX from '~icons/lucide/x'
 
 interface Props {
   open: boolean
@@ -84,7 +85,7 @@ async function onSubmit(): Promise<void> {
             aria-label="不設定顏色"
             @click="color = null"
           >
-            ✕
+            <IconX aria-hidden="true" />
           </button>
           <button
             v-for="c in PALETTE"

@@ -98,3 +98,4 @@ bash scripts/backup-members.sh               # members 加密備份
 - `financial_statements` 一律存**單季**。TWSE OpenAPI 綜合損益表是年初至今累計，crawler 以 `crawlers/fundamental/ytd.py` 扣除前幾季換算；新增財報來源時要確認是單季還是累計。
 - crawler model 與 `db/init/01-stocks.sql` 欄位必須一致（曾漏 `dividends.ex_dividend_date`、`market_index` 開高低），改 model 時同步改 init。
 - Windows 開發：`.sh` 與 `crawler/crontab` 由 `.gitattributes` 強制 LF，別讓編輯器改成 CRLF。
+- 不用 emoji。前端圖示用 unplugin-icons：`import IconX from '~icons/lucide/x'`（web/admin 的 vite 已掛 plugin，packages/ui 也可直接 import），Lucide 沒有的才自繪 SVG。
