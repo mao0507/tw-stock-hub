@@ -60,3 +60,15 @@ export interface TodaySignals {
 }
 
 export type SignalScope = 'all' | 'watchlist' | 'holdings' | 'mine'
+
+/** 逐檔訊號訂閱（#33）：該股出現該訊號的交易日通知一次 */
+export interface SignalSubscription {
+  id: string
+  stockId: string
+  stockName: string
+  signal: string
+  isActive: boolean
+  /** 最近一次通知的交易日 */
+  lastNotifiedDate: string | null
+  createdAt: string
+}

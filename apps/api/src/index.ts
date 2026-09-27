@@ -4,7 +4,7 @@ import { loadConfig } from './config.js'
 import { createDb, runMigrations } from './db/client.js'
 import { startCrawlerDoneListener } from './lib/crawler-events.js'
 import { createTelegram } from './lib/telegram.js'
-import { evaluateAlerts, recomputeDividendsForStock } from './modules/portfolio/index.js'
+import { evaluateAlerts, evaluateSignalSubscriptions, recomputeDividendsForStock } from './modules/portfolio/index.js'
 
 const config = loadConfig()
 const { sql, db } = createDb(config.databaseUrl)
@@ -17,6 +17,7 @@ console.info('[api] 啟動時重算股利', await recomputeDividendsForStock(db)
 await startCrawlerDoneListener(sql, {
   onExDividend: () => recomputeDividendsForStock(db),
   onQuotes: () => evaluateAlerts(db, telegram),
+  onSignals: () => evaluateSignalSubscriptions(db, telegram),
 })
 
 const app = createApp({

@@ -8,6 +8,7 @@ import {
   LoadingSkeleton, EmptyState,
 } from '@tw-stock-hub/ui'
 import TelegramLink from './TelegramLink.vue'
+import SignalSubscriptions from './SignalSubscriptions.vue'
 
 const alerts = ref<AlertItem[]>([])
 const isLoading = ref(true)
@@ -199,6 +200,8 @@ const fmtTime = (iso: string) => new Date(iso).toLocaleString('zh-TW', { month: 
         </div>
       </li>
     </ul>
+
+    <SignalSubscriptions />
 
     <AppModal
       :open="createOpen"

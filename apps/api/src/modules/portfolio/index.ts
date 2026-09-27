@@ -7,6 +7,8 @@ import { type AuthEnv, requireAuth } from '../../middleware/auth.js'
 import { createAlertsRepository, type Triggered } from './alerts.repository.js'
 import { createAlertRoutes } from './alerts.routes.js'
 import { createSignalRoutes } from './signals.routes.js'
+import { createSignalSubsRepository } from './signal-subs.repository.js'
+import { createSignalSubRoutes } from './signal-subs.routes.js'
 import { createTelegramRoutes } from './telegram.routes.js'
 import { createPortfolioRepository, MAX_PRICE, MAX_TOTAL_SHARES } from './repository.js'
 import { summarize } from './summary.js'
@@ -196,6 +198,19 @@ export function recomputeDividendsForStock(db: Db): Promise<{ updated: number; f
  */
 export async function evaluateAlerts(db: Db, telegram?: Telegram): Promise<Triggered[]> {
   const triggered = await createAlertsRepository(db).evaluate()
+  await pushTelegram(db, triggered, telegram)
+  return triggered
+}
+
+/** 訊號任務完成時呼叫：評估逐檔訊號訂閱（#33），同日同訂閱只通知一次 */
+export async function evaluateSignalSubscriptions(db: Db, telegram?: Telegram): Promise<Triggered[]> {
+  const triggered = await createSignalSubsRepository(db).evaluate()
+  await pushTelegram(db, triggered, telegram)
+  return triggered
+}
+
+/** 推送給已綁定 Telegram 的使用者；失敗只記 log，不影響站內通知 */
+async function pushTelegram(db: Db, triggered: Triggered[], telegram?: Telegram): Promise<void> {
   if (telegram?.enabled && triggered.length) {
     const ids = [...new Set(triggered.map((t) => t.userId))]
     const chats = new Map(
@@ -212,7 +227,6 @@ ${t.body}`).catch((err: unknown) => {
       })
     }
   }
-  return triggered
 }
 
 export function createPortfolioRoutes(db: Db, jwtSecret: string, telegram: Telegram) {
@@ -224,6 +238,7 @@ export function createPortfolioRoutes(db: Db, jwtSecret: string, telegram: Teleg
   app.route('/', createAlertRoutes(db))
   app.route('/', createTelegramRoutes(db, telegram))
   app.route('/', createSignalRoutes(db))
+  app.route('/', createSignalSubRoutes(db))
 
   app.openapi(routes.holdings, async (c) => {
     const rows = await repo.holdingsWithPrice(c.get('jwtPayload').sub)

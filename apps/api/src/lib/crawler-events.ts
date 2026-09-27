@@ -16,6 +16,8 @@ export type CrawlerDoneHandlers = {
   onExDividend?: () => Promise<unknown>
   /** 行情更新後：評估盤後提醒 */
   onQuotes?: () => Promise<unknown>
+  /** 每日訊號偵測後：評估訊號訂閱 */
+  onSignals?: () => Promise<unknown>
 }
 
 function parsePayload(payload: string): { name: string | null; count: number | null } {
@@ -47,6 +49,12 @@ export async function startCrawlerDoneListener(
     if (name && QUOTE_CRAWLERS.has(name) && count !== 0 && handlers.onQuotes) {
       handlers.onQuotes().catch((err: unknown) => {
         console.error('[api] 行情更新後評估提醒失敗', err)
+      })
+    }
+    // 只接每日任務（signals_full 是回補，不發通知）；筆數 0 代表休市
+    if (name === 'signals' && count !== 0 && handlers.onSignals) {
+      handlers.onSignals().catch((err: unknown) => {
+        console.error('[api] 訊號更新後評估訂閱失敗', err)
       })
     }
     if (name && EX_DIVIDEND_CRAWLERS.has(name) && handlers.onExDividend) {

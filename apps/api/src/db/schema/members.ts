@@ -161,6 +161,24 @@ export const alertRules = members.table(
   ],
 )
 
+/** 逐檔技術訊號訂閱（#33）：訊號偵測完成後評估，last_notified_date 保證同一交易日只通知一次 */
+export const signalSubscriptions = members.table(
+  'signal_subscriptions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: userId(),
+    stockId: varchar('stock_id', { length: 10 }).notNull(),
+    signal: varchar('signal', { length: 40 }).notNull(),
+    isActive: boolean('is_active').notNull().default(true),
+    lastNotifiedDate: date('last_notified_date', { mode: 'string' }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique('uq_signal_subscriptions').on(t.userId, t.stockId, t.signal),
+    index('idx_signal_subscriptions_stock').on(t.stockId, t.signal),
+  ],
+)
+
 /** 站內通知（#26）；Telegram 等通道的送出狀態另記 */
 export const notifications = members.table(
   'notifications',
