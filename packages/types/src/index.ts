@@ -6,9 +6,12 @@ export type * from './news.types'
 export type * from './screener.types'
 export type * from './portfolio.types'
 export type * from './watchlist.types'
+export type * from './signal.types'
 
 export {
   NEWS_SOURCE_LABEL,
   NEWS_CATEGORY_LABEL,
   NEWS_CATEGORY_COLOR,
 } from './news.types'
+
+export { SIGNAL_META, signalLabel } from './signal.types'

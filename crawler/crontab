@@ -10,6 +10,8 @@
 45 14 * * 1-5      python run_job.py tpex_daily
 55 14 * * 1-5      python run_job.py technical
 58 14 * * 1-5      python run_job.py strength
+# 訊號依賴技術指標（14:55），留足時間
+10 15 * * 1-5      python run_job.py signals
 0  15 * * 1-5      python run_job.py market_index
 30 15 * * 1-5      python run_job.py valuation
 32 15 * * 1-5      python run_job.py valuation_tpex

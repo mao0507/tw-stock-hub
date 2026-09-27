@@ -14,6 +14,7 @@ import { stockApi } from '@tw-stock-hub/api-client'
 import OverviewTab from './OverviewTab.vue'
 import FundamentalTab from './FundamentalTab.vue'
 import TechnicalSummary from './TechnicalSummary.vue'
+import RecentSignals from './RecentSignals.vue'
 import StockQuickActions from './StockQuickActions.vue'
 import type {
   BrokerRanking, BrokerDetail, SectorStockItem, BrokerConcentration, BrokerStreak,
@@ -477,6 +478,7 @@ const tabs: { key: TabKey; label: string }[] = [
               @interval-change="onIntervalChange"
             />
             <TechnicalSummary :stock-id="stockId" />
+            <RecentSignals :stock-id="stockId" />
           </template>
         </div>
 

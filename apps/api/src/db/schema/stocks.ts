@@ -157,6 +157,15 @@ export const marketStrength = stocksSchema.table('market_strength', {
   weightedReturn: numeric('weighted_return', { precision: 10, scale: 4 }).notNull(),
 })
 
+// 技術訊號事件（crawler analytics/signals.py，#29）
+export const technicalSignals = stocksSchema.table('technical_signals', {
+  date: date('date').notNull(),
+  stockId: varchar('stock_id', { length: 10 }).notNull(),
+  signal: varchar('signal', { length: 40 }).notNull(),
+  side: varchar('side', { length: 4 }).notNull(),
+  values: jsonb('values').notNull(),
+})
+
 export const etfHoldings = stocksSchema.table('etf_holdings', {
   etfId: varchar('etf_id', { length: 10 }).notNull(),
   stockId: varchar('stock_id', { length: 10 }).notNull(),

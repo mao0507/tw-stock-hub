@@ -7,7 +7,7 @@ import type {
   BrokerStreak, BrokerConcentration,
   RevenueItem, FinancialItem, DividendItem, Valuation, HolderItem, ExDividendItem, EtfHoldings,
   FinancialMetrics,
-  StockScore, BacktestParams, BacktestResult, StockIndicators,
+  StockScore, BacktestParams, BacktestResult, StockIndicators, TechnicalSignal,
   ContinuousItem, NewsItem, NewsParams, MopsParams,
   ScreenerFilter, ScreenerResponse, PaginatedResponse, Market,
 } from '@tw-stock-hub/types'
@@ -115,6 +115,12 @@ export const stockApi = {
     const { data } = await apiClient.get(`/api/stocks/${id}/dividends`)
     return data
   },
+  /** 個股技術訊號；未指定區間為最新訊號日往回 90 天 */
+  async getSignals(id: string, params: { from?: string; to?: string } = {}): Promise<TechnicalSignal[]> {
+    const { data } = await apiClient.get<TechnicalSignal[]>(`/api/stocks/${id}/signals`, { params })
+    return data
+  },
+
   async getIndicators(id: string, days = 120): Promise<StockIndicators> {
     const { data } = await apiClient.get<StockIndicators>(`/api/stocks/${id}/indicators`, { params: { days } })
     return data

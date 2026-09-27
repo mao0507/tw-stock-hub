@@ -383,6 +383,16 @@ CREATE TABLE IF NOT EXISTS market_strength (
 SELECT create_hypertable('market_strength','date',if_not_exists=>TRUE);
 CREATE INDEX IF NOT EXISTS idx_ms_stock ON market_strength(stock_id, date DESC);
 
+-- ── 技術訊號事件（crawler analytics/signals.py 每日偵測） ──
+CREATE TABLE IF NOT EXISTS technical_signals (
+  date DATE NOT NULL, stock_id VARCHAR(10) NOT NULL, signal VARCHAR(40) NOT NULL,
+  side VARCHAR(4) NOT NULL CHECK (side IN ('bull', 'bear')),
+  "values" JSONB NOT NULL DEFAULT '{}',
+  PRIMARY KEY (date, stock_id, signal));
+SELECT create_hypertable('technical_signals','date',if_not_exists=>TRUE);
+CREATE INDEX IF NOT EXISTS idx_sig_stock ON technical_signals(stock_id, date DESC);
+CREATE INDEX IF NOT EXISTS idx_sig_date_signal ON technical_signals(date DESC, signal);
+
 -- ── 壓縮：所有 hypertable 超過 30 天的 chunk 自動壓縮 ──
 DO $$
 DECLARE

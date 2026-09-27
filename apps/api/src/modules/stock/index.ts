@@ -11,6 +11,7 @@ import { registerBrokerRoutes } from './broker.js'
 import { registerNewsRoutes } from './news.js'
 import { registerScoreRoutes } from './score.js'
 import { registerScreenerRoutes } from './screener.js'
+import { registerSignalRoutes } from './signals.js'
 import { registerTechnicalRoutes } from './technical.js'
 
 // 全市場公開資料（Q27：目前只在本機跑，暫不驗證；上線前掛 requireAuth）
@@ -28,5 +29,6 @@ export function createStockRoutes(db: Db) {
   registerBacktestRoutes(app, db)
   registerNewsRoutes(app, db)
   registerBrokerRoutes(app, db)
+  registerSignalRoutes(app, db)
   return app
 }

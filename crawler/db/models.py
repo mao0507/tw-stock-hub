@@ -269,6 +269,16 @@ class MarketStrengthModel(Base):
     weighted_return = Column(Numeric(10, 4), nullable=False)
 
 
+class TechnicalSignalModel(Base):
+    """技術訊號事件（analytics/signals.py；欄位須與 db/init/01-stocks.sql 一致）"""
+    __tablename__ = "technical_signals"
+    date = Column(Date, primary_key=True)
+    stock_id = Column(String(10), primary_key=True)
+    signal = Column(String(40), primary_key=True)
+    side = Column(String(4), nullable=False)
+    values = Column(JSONB, nullable=False)
+
+
 class ShareholderDispersionModel(Base):
     __tablename__ = "shareholder_dispersion"
     __table_args__ = (UniqueConstraint("date", "stock_id", name="uq_disp"),)
