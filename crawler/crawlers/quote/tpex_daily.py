@@ -11,7 +11,9 @@ class TPEXDailyQuoteCrawler(BaseCrawler):
     crawler_name = "TPEXDailyQuoteCrawler"
     referer_url = "https://www.tpex.org.tw/"
     BASE_URL = "https://www.tpex.org.tw/web/stock/aftertrading/otc_quotes_no1430/stk_wn1430_result.php"
-    SKIP_KEYWORDS = ["合計", "小計", "ETF", "指數", "基金"]
+    # 只擋合計列；指數等非證券列已由代號規則（is_tradable_code）排除。
+    # 勿加「基金」「ETF」這類字：會誤殺「凱基金」(2883) 等個股與部分 ETF
+    SKIP_KEYWORDS = ["合計", "小計"]
 
     async def crawl(self) -> int:
         today = self.target_date
