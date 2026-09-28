@@ -6,6 +6,7 @@ import { NewsFeed } from '@tw-stock-hub/ui'
 import { stockApi } from '@tw-stock-hub/api-client'
 import type { DailyQuote, Institutional, Margin, Valuation, StockScore } from '@tw-stock-hub/types'
 import IconArrowRight from '~icons/lucide/arrow-right'
+import HeldByEtfs from './HeldByEtfs.vue'
 
 type Period = '1M' | '3M' | '6M' | '1Y'
 type TabKey = 'technical' | 'fundamental' | 'institutional' | 'margin' | 'broker' | 'dividend' | 'backtest' | 'news' | 'mops'
@@ -202,6 +203,8 @@ function fmtNet(v: number): string {
         </div>
       </div>
     </div>
+
+    <HeldByEtfs :stock-id="stockId" />
 
     <div class="panel">
       <div class="panel-hd">

@@ -4,7 +4,7 @@ import type { Db } from '../../db/client.js'
 import { etfInfo } from '../../db/schema/stocks.js'
 import { cached, ErrorBody, findActiveStock, IdParam, json, NOT_FOUND, notFoundBody } from './shared.js'
 
-// ETF 成分（#40）：最新一期成分清單與產業分布；與上期比較（#41）。成分表保存每期歷史。
+// ETF 成分（#40）：最新一期成分清單與產業分布；與上期比較（#41）；持有本股的 ETF（#42）。成分表保存每期歷史。
 
 const Holding = z.object({
   name: z.string(),
@@ -51,6 +51,18 @@ const changesRoute = createRoute({
   },
 })
 
+const heldByRoute = createRoute({
+  method: 'get',
+  path: '/stocks/{id}/held-by-etfs',
+  request: { params: IdParam },
+  responses: {
+    200: json(z.array(z.object({
+      etfId: z.string(), etfName: z.string(), weight: z.number(), dataDate: z.string(),
+    })), '持有本股的 ETF（各 ETF 最新一期，依權重排序）'),
+    404: json(ErrorBody, '查無股票'),
+  },
+})
+
 const round2 = (v: number) => Math.round(v * 100) / 100
 const n = (v: string | null) => (v == null ? null : Number(v))
 
@@ -60,6 +72,23 @@ type Row = {
 }
 
 export function registerEtfRoutes(app: OpenAPIHono, db: Db) {
+  app.openapi(heldByRoute, async (c) => {
+    const { id } = c.req.valid('param')
+    const r = await cached(`held-by-etfs:${id}`, async () => {
+      if (!(await findActiveStock(db, id))) return NOT_FOUND
+      const rows = await db.execute<{ etf_id: string; name: string; weight: string; d: string }>(sql`
+        -- 先用 (stock_id, data_date) 索引找出持有列，再以主鍵前綴確認是該 ETF 的最新一期
+        SELECT e.etf_id, s.name, e.weight, e.data_date::text AS d
+        FROM stocks.etf_constituents e
+        JOIN stocks.stocks s ON s.id = e.etf_id AND s.is_active
+        WHERE e.stock_id = ${id}
+          AND e.data_date = (SELECT MAX(data_date) FROM stocks.etf_constituents WHERE etf_id = e.etf_id)
+        ORDER BY e.weight DESC, e.etf_id`)
+      return { data: rows.map((x) => ({ etfId: x.etf_id, etfName: x.name, weight: Number(x.weight), dataDate: x.d })) }
+    })
+    return 'notFound' in r ? c.json(notFoundBody(id), 404) : c.json(r.data, 200)
+  })
+
   app.openapi(changesRoute, async (c) => {
     const { id } = c.req.valid('param')
     const r = await cached(`etf-changes:${id}`, async () => {

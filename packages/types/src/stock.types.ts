@@ -334,6 +334,9 @@ export interface EtfChanges {
   changed: (EtfChangeItem & { previousWeight: number; diff: number })[]
 }
 
+/** 持有本股的 ETF（#42），權重取各 ETF 最新一期 */
+export interface HeldByEtf { etfId: string; etfName: string; weight: number; dataDate: string }
+
 export interface ExDividendItem {
   exDate: string
   stockId: string

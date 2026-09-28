@@ -130,3 +130,28 @@ describe('GET /stocks/{id}/etf-changes', () => {
     expect((await changes('0000')).status).toBe(404)
   })
 })
+
+type HeldBy = { etfId: string; etfName: string; weight: number; dataDate: string }[]
+const heldBy = async (id: string) => {
+  const res = await app.request(`/api/stocks/${id}/held-by-etfs`)
+  return { status: res.status, body: (await res.json()) as HeldBy }
+}
+
+describe('GET /stocks/{id}/held-by-etfs', () => {
+  it('列出持有本股的 ETF（各取最新一期），依權重排序', async () => {
+    const { status, body } = await heldBy('2330')
+    expect(status).toBe(200)
+    expect(body).toEqual([
+      { etfId: '0096', etfName: '換來源ETF', weight: 51, dataDate: '2026-09-24' },
+      { etfId: '0099', etfName: '測試ETF', weight: 50.5, dataDate: '2026-09-24' },
+      { etfId: '0097', etfName: '換股ETF', weight: 45.5, dataDate: '2026-09-24' },
+    ])
+  })
+
+  it('舊一期的持有不算；沒有 ETF 持有回空；查無股票 404', async () => {
+    // 2882 在 0099 的舊一期權重 100，最新一期 29.5
+    expect((await heldBy('2882')).body.map((x) => [x.etfId, x.weight])).toEqual([['0097', 30], ['0099', 29.5]])
+    expect((await heldBy('0098')).body).toEqual([])
+    expect((await heldBy('0000')).status).toBe(404)
+  })
+})
