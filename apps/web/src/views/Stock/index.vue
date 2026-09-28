@@ -13,6 +13,7 @@ import {
 import { stockApi } from '@tw-stock-hub/api-client'
 import OverviewTab from './OverviewTab.vue'
 import FundamentalTab from './FundamentalTab.vue'
+import EtfHoldingsTab from './EtfHoldingsTab.vue'
 import TechnicalSummary from './TechnicalSummary.vue'
 import RecentSignals from './RecentSignals.vue'
 import BacktestTab from './BacktestTab.vue'
@@ -28,7 +29,7 @@ import type {
 import { signalLabel } from '@tw-stock-hub/types'
 
 type Interval = 'daily' | 'weekly' | 'monthly'
-type TabKey = 'overview' | 'technical' | 'fundamental' | 'chips' | 'dividend' | 'backtest' | 'news' | 'mops'
+type TabKey = 'overview' | 'technical' | 'fundamental' | 'holdings' | 'chips' | 'dividend' | 'backtest' | 'news' | 'mops'
 type ChipView = 'institutional' | 'margin' | 'broker'
 type InstType = 'foreign' | 'trust' | 'dealer' | 'total'
 
@@ -279,18 +280,20 @@ function fmtBroker(name: string): string {
   return label ? `${code} ${label}` : name
 }
 
-// ETF 沒有財報：基本面分頁改為成分股（#39；#40 起改為獨立的成分股分頁）
+// ETF 沒有財報：以成分股分頁取代基本面（#40）
 const isEtf = computed(() => !!currentStock.value && currentStock.value.securityType !== 'stock')
 const tabs = computed<{ key: TabKey; label: string }[]>(() => [
   { key: 'overview', label: '總覽' },
   { key: 'technical', label: '技術分析' },
   { key: 'chips', label: '籌碼分析' },
-  { key: 'fundamental', label: isEtf.value ? '成分股' : '基本面' },
+  isEtf.value ? { key: 'holdings' as const, label: '成分股' } : { key: 'fundamental' as const, label: '基本面' },
   { key: 'dividend', label: '除權息' },
   { key: 'news', label: '相關新聞' },
   { key: 'mops', label: '重大訊息' },
   { key: 'backtest', label: '回測' },
 ])
+// 從 ETF 成分點進個股（或反向）時，目前分頁可能不存在 → 回總覽
+watch(tabs, (list) => { if (!list.some((t) => t.key === activeTab.value)) activeTab.value = 'overview' })
 </script>
 
 <template>
@@ -502,6 +505,12 @@ const tabs = computed<{ key: TabKey; label: string }[]>(() => [
           :institutional-data="institutionalData"
           :margin-data="marginData"
           @go="goTab"
+        />
+
+        <!-- Tab: ETF 成分股 -->
+        <EtfHoldingsTab
+          v-else-if="activeTab === 'holdings'"
+          :stock-id="stockId"
         />
 
         <!-- Tab: 除權息 -->

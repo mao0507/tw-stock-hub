@@ -2,6 +2,7 @@ import { OpenAPIHono } from '@hono/zod-openapi'
 import type { Db } from '../../db/client.js'
 import { registerCalendarRoutes } from './calendar.js'
 import { registerChipRoutes } from './chips.js'
+import { registerEtfRoutes } from './etf.js'
 import { registerFundamentalRoutes } from './fundamentals.js'
 import { registerMarketRoutes } from './market.js'
 import { registerRankingRoutes } from './rankings.js'
@@ -30,5 +31,6 @@ export function createStockRoutes(db: Db) {
   registerNewsRoutes(app, db)
   registerBrokerRoutes(app, db)
   registerSignalRoutes(app, db)
+  registerEtfRoutes(app, db)
   return app
 }

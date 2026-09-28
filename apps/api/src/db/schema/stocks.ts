@@ -169,15 +169,6 @@ export const technicalSignals = stocksSchema.table('technical_signals', {
   values: jsonb('values').notNull(),
 })
 
-export const etfHoldings = stocksSchema.table('etf_holdings', {
-  etfId: varchar('etf_id', { length: 10 }).notNull(),
-  stockId: varchar('stock_id', { length: 10 }).notNull(),
-  stockName: varchar('stock_name', { length: 50 }),
-  weight: numeric('weight', { precision: 6, scale: 2 }),
-  shares: bigint('shares', { mode: 'number' }),
-  updatedDate: date('updated_date'),
-})
-
 export const etfInfo = stocksSchema.table('etf_info', {
   etfId: varchar('etf_id', { length: 10 }).notNull(),
   items: jsonb('items'),

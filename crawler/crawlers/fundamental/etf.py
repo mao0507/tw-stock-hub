@@ -1,6 +1,8 @@
-"""ETF 成分股 + 權重（來源：MoneyDJ ETF 基本資料頁，單一格式覆蓋全 ETF）。
+"""ETF 成分與基本資料（來源：MoneyDJ ETF 頁，單一格式覆蓋全 ETF；第三方網站，逐檔限速）。
 
-逐檔查詢，採 on-demand（看 ETF 個股頁時補）。
+- etf_holdings（每日）：成分表含資料日期，只有資料日期比 DB 最新一期新才寫入，保存每期歷史。
+  台股成分附代號（2330.TW／.TWO）；海外股保留原始代號（NVDA.US）；債券、期貨、現金沒有代號。
+- etf_refresh（每週）：基本資料頁。
 """
 
 import asyncio
@@ -11,15 +13,17 @@ from datetime import date
 import httpx
 from bs4 import BeautifulSoup
 from loguru import logger
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import insert
 
 from config import settings
 from db.connection import get_session
-from db.models import StockModel
+from db.models import ETFConstituentModel, StockModel
 from pipeline.writer import DataWriter
 
 URL = "https://www.moneydj.com/etf/x/Basic/Basic0007b.xdjhtm"
 INFO_URL = "https://www.moneydj.com/etf/x/Basic/Basic0004.xdjhtm"
+SOURCE = "moneydj"
 
 # 基本資料欄位白名單（key 子字串 → 顯示標籤），保序
 INFO_FIELDS = [
@@ -49,36 +53,56 @@ def _num(s: str) -> float | None:
         return None
 
 
-def parse_holdings(html: str) -> list[dict]:
-    """解析 MoneyDJ 成分表 → [{stock_id, stock_name, weight, shares}]。"""
+def parse_holdings(html: str) -> tuple[date | None, list[dict]]:
+    """解析 MoneyDJ 成分頁 → (資料日期, [{name, stock_id, symbol, weight, shares}])。"""
     soup = BeautifulSoup(html, "lxml")
+    m = re.search(r"資料日期[：:]\s*(\d{4})/(\d{2})/(\d{2})", soup.get_text(" ", strip=True))
+    data_date = date(int(m[1]), int(m[2]), int(m[3])) if m else None
     out: list[dict] = []
     for tbl in soup.find_all("table"):
-        head = tbl.get_text()
-        if "投資比例" not in head and "權重" not in head:
+        if "投資比例" not in tbl.get_text():
             continue
         for tr in tbl.find_all("tr"):
-            cells = [td.get_text(strip=True) for td in tr.find_all(["td", "th"])]
+            cells = [td.get_text(strip=True) for td in tr.find_all("td")]
             if len(cells) < 2:
                 continue
-            # cells[0] = '台積電(2330.TW)'
-            m = re.search(r"\(([0-9A-Z]+)\.(?:TW|TWO)\)", cells[0])
-            if not m:
-                continue
-            name = cells[0].split("(")[0].strip()
             weight = _num(cells[1])
-            shares = _num(cells[2]) if len(cells) > 2 else None
             if weight is None:
                 continue
+            # 「台積電(2330.TW)」「NVIDIA(NVDA.US)」「臺股期貨 202610(FITXN*1.TF)」；債券名稱本身可能含括號，只認結尾的「(代號.市場)」
+            cm = re.fullmatch(r"(.+?)\(([^()\s]+\.[A-Z]{2,3})\)", cells[0])
+            name, symbol = (cm[1].strip(), cm[2]) if cm else (cells[0], None)
+            tw = re.fullmatch(r"([0-9A-Z]+)\.(?:TW|TWO)", symbol or "")
+            shares = _num(cells[2]) if len(cells) > 2 else None
             out.append({
-                "stock_id": m.group(1),
-                "stock_name": name[:50],
-                "weight": round(weight, 2),
+                "name": name[:120],
+                "stock_id": tw[1] if tw else None,
+                "symbol": symbol,
+                "weight": round(weight, 3),
                 "shares": int(shares) if shares is not None else None,
             })
         if out:
             break
-    return out
+    return (data_date, out) if out else (None, [])
+
+
+def plan_records(etf_id: str, data_date: date | None, rows: list[dict], latest: date | None, source: str) -> list[dict]:
+    """資料日期比 DB 最新一期新才寫；同名成分合併權重與股數。"""
+    if data_date is None or (latest is not None and data_date <= latest):
+        return []
+    merged: dict[str, dict] = {}
+    for r in rows:
+        cur = merged.get(r["name"])
+        if cur:
+            cur["weight"] = round(cur["weight"] + r["weight"], 3)
+            if r["shares"] is not None:
+                cur["shares"] = (cur["shares"] or 0) + r["shares"]
+            continue
+        merged[r["name"]] = {
+            "etf_id": etf_id, "data_date": data_date, "holding_name": r["name"], "stock_id": r["stock_id"],
+            "symbol": r["symbol"], "weight": r["weight"], "shares": r["shares"], "source": source,
+        }
+    return list(merged.values())
 
 
 def parse_info(html: str) -> list[list[str]]:
@@ -105,60 +129,71 @@ def parse_info(html: str) -> list[list[str]]:
     return out
 
 
-async def fetch_etf_holdings(etf_id: str) -> int:
-    today = date.today()
-    async with httpx.AsyncClient(timeout=30, verify=False, follow_redirects=True, headers=HEADERS) as c:
-        r = await c.get(URL, params={"etfid": f"{etf_id}.TW"})
-        r.raise_for_status()
-        holdings = parse_holdings(r.text)
-        try:
-            ri = await c.get(INFO_URL, params={"etfid": f"{etf_id}.TW"})
-            info = parse_info(ri.text)
-            if info:
-                await DataWriter.write_etf_info(etf_id, info, today)
-        except Exception as e:
-            logger.warning(f"[ETF] {etf_id} 基本資料失敗: {e}")
-
-    if not holdings:
-        logger.warning(f"[ETF] {etf_id} 無成分資料")
-        return 0
-
-    records = [{"etf_id": etf_id, "updated_date": today, **h} for h in holdings]
-    count = await DataWriter.write_etf_holdings(etf_id, records)
-    logger.info(f"[ETF] {etf_id}: {count} 成分股 + 基本資料")
-    return count
-
-
-async def refresh_all_known_etfs() -> int:
-    """週排程用：枚舉已知 ETF（代號開頭 00 且 is_active）逐檔補資料。"""
+async def _etfs() -> list[tuple[str, str]]:
     async with get_session() as session:
         rows = await session.execute(
-            select(StockModel.id).where(StockModel.id.like("00%"), StockModel.is_active.is_(True))
+            select(StockModel.id, StockModel.security_type)
+            .where(StockModel.security_type != "stock", StockModel.is_active.is_(True))
+            .order_by(StockModel.id)
         )
-        etf_ids = [r[0] for r in rows.all()]
+        return [(r[0], r[1]) for r in rows.all()]
 
-    total = 0
-    for etf_id in etf_ids:
-        try:
-            total += await fetch_etf_holdings(etf_id)
-        except Exception as e:
-            logger.error(f"[ETF] {etf_id} 週更失敗: {e}")
-        await asyncio.sleep(random.uniform(settings.request_delay_min, settings.request_delay_max))
-    logger.info(f"[ETF] 週更完成，共 {len(etf_ids)} 檔、{total} 筆成分股")
+
+async def _sleep() -> None:
+    await asyncio.sleep(random.uniform(settings.request_delay_min, settings.request_delay_max))
+
+
+async def fetch_holdings(client: httpx.AsyncClient, etf_id: str, security_type: str) -> int:
+    r = await client.get(URL, params={"etfid": f"{etf_id}.TW"})
+    r.raise_for_status()
+    data_date, rows = parse_holdings(r.text)
+    if not rows:
+        logger.warning(f"[ETF成分] {etf_id} 無成分資料")
+        return 0
+    if security_type == "etf_equity":
+        no_code = [x["name"] for x in rows if not x["stock_id"] and not x["symbol"]]
+        if no_code:
+            logger.warning(f"[ETF成分] {etf_id} 國內股票型有無代號成分：{no_code[:10]}")
+    async with get_session() as session:
+        latest = (await session.execute(
+            select(func.max(ETFConstituentModel.data_date)).where(ETFConstituentModel.etf_id == etf_id)
+        )).scalar()
+        records = plan_records(etf_id, data_date, rows, latest, SOURCE)
+        if records:
+            await session.execute(insert(ETFConstituentModel.__table__).values(records).on_conflict_do_nothing())
+    return len(records)
+
+
+async def refresh_holdings() -> int:
+    """每日：全部 ETF 成分（資料日期有變才寫）。"""
+    total = written = 0
+    async with httpx.AsyncClient(timeout=30, verify=False, follow_redirects=True, headers=HEADERS) as c:
+        for etf_id, kind in await _etfs():
+            try:
+                n = await fetch_holdings(c, etf_id, kind)
+                total += n
+                written += 1 if n else 0
+            except Exception as e:
+                logger.error(f"[ETF成分] {etf_id} 失敗: {e}")
+            await _sleep()
+    logger.info(f"[ETF成分] {written} 檔有新一期，共 {total} 筆")
     return total
 
 
-def _selfcheck() -> None:
-    sample = (
-        "<table><tr><th>個股名稱</th><th>投資比例(%)</th><th>持有股數</th></tr>"
-        "<tr><td>台積電(2330.TW)</td><td>57.72</td><td>520,512,559</td></tr>"
-        "<tr><td>聯發科(2454.TW)</td><td>5.79</td><td>31,487,629</td></tr></table>"
-    )
-    h = parse_holdings(sample)
-    assert h[0] == {"stock_id": "2330", "stock_name": "台積電", "weight": 57.72, "shares": 520512559}, h
-    assert h[1]["stock_id"] == "2454", h
-    print("etf parse self-check ok")
-
-
-if __name__ == "__main__":
-    _selfcheck()
+async def refresh_all_known_etfs() -> int:
+    """每週：全部 ETF 基本資料。"""
+    today = date.today()
+    count = 0
+    async with httpx.AsyncClient(timeout=30, verify=False, follow_redirects=True, headers=HEADERS) as c:
+        for etf_id, _ in await _etfs():
+            try:
+                ri = await c.get(INFO_URL, params={"etfid": f"{etf_id}.TW"})
+                info = parse_info(ri.text)
+                if info:
+                    await DataWriter.write_etf_info(etf_id, info, today)
+                    count += 1
+            except Exception as e:
+                logger.error(f"[ETF基本資料] {etf_id} 失敗: {e}")
+            await _sleep()
+    logger.info(f"[ETF基本資料] 更新 {count} 檔")
+    return count

@@ -302,15 +302,17 @@ class ExDividendCalendarModel(Base):
     stock_dividend_ratio = Column(Numeric(12, 8))
 
 
-class ETFHoldingModel(Base):
-    __tablename__ = "etf_holdings"
-    __table_args__ = (UniqueConstraint("etf_id", "stock_id", name="uq_etf_holding"),)
+class ETFConstituentModel(Base):
+    """ETF 成分（#40）：每期（資料日）一份，保存歷史。台股成分才有 stock_id；symbol 為來源原始代號。"""
+    __tablename__ = "etf_constituents"
     etf_id = Column(String(10), primary_key=True)
-    stock_id = Column(String(10), primary_key=True)
-    stock_name = Column(String(50))
-    weight = Column(Numeric(6, 2))
-    shares = Column(BigInteger)
-    updated_date = Column(Date)
+    data_date = Column(Date, primary_key=True)
+    holding_name = Column(String(120), primary_key=True)
+    stock_id = Column(String(10), nullable=True)
+    symbol = Column(String(20), nullable=True)
+    weight = Column(Numeric(7, 3))
+    shares = Column(BigInteger, nullable=True)
+    source = Column(String(20), nullable=False)
 
 
 class ETFInfoModel(Base):

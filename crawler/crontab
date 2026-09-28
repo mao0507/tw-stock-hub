@@ -34,6 +34,8 @@
 # 證券類型（新上市 ETF）；單一請求
 0  7 * * 1-5      python run_job.py etf_types
 30 21 * * 0        python run_job.py etf_refresh
+# ETF 成分（MoneyDJ，逐檔限速約 10 分鐘；資料日期有變才寫）
+30 19 * * 1-5      python run_job.py etf_holdings
 
 # ── 新聞 ──
 0  8 * * 1-5       python run_job.py cnyes

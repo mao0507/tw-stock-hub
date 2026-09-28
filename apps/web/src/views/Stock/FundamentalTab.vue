@@ -1,12 +1,11 @@
 <script setup lang="ts">
 // 基本面分頁：財報狗式六分類（關鍵指標/獲利能力/成長力/價值評估/安全性/董監與籌碼）
 import { ref, computed, watch, onMounted } from 'vue'
-import { PieChart, PIE_PALETTE } from '@tw-stock-hub/charts'
 import { LoadingSkeleton } from '@tw-stock-hub/ui'
 import { stockApi } from '@tw-stock-hub/api-client'
 import type {
   RevenueItem, FinancialItem, DividendItem, Valuation, HolderItem,
-  EtfHoldings, StockScore, Institutional, Margin, FinancialMetrics,
+  StockScore, Institutional, Margin, FinancialMetrics,
 } from '@tw-stock-hub/types'
 import TrendChart from './TrendChart.vue'
 import type { TrendSeries } from './trend'
@@ -39,44 +38,31 @@ const financials = ref<FinancialItem[]>([])
 const dividends = ref<DividendItem[]>([])
 const valuation = ref<Valuation | null>(null)
 const holders = ref<HolderItem[]>([])
-const etf = ref<EtfHoldings | null>(null)
 const score = ref<StockScore | null>(null)
 const metrics = ref<FinancialMetrics | null>(null)
 const loading = ref(false)
 let loadedFor = ''
 
-const isEtf = computed(() => /^00/.test(props.stockId))
-
 async function load(): Promise<void> {
   if (loadedFor === props.stockId) return
   loading.value = true
   try {
-    if (isEtf.value) {
-      const [e, v] = await Promise.all([
-        stockApi.getEtfHoldings(props.stockId),
-        stockApi.getValuation(props.stockId),
-      ])
-      etf.value = e
-      valuation.value = v
-    } else {
-      etf.value = null
-      const [r, f, d, v, h, s, m] = await Promise.all([
-        stockApi.getRevenue(props.stockId),
-        stockApi.getFinancials(props.stockId),
-        stockApi.getDividends(props.stockId),
-        stockApi.getValuation(props.stockId),
-        stockApi.getHolders(props.stockId),
-        stockApi.getScore(props.stockId).catch(() => null),
-        stockApi.getMetrics(props.stockId).catch(() => null),
-      ])
-      revenue.value = r
-      financials.value = f
-      dividends.value = d
-      valuation.value = v
-      holders.value = h
-      score.value = s
-      metrics.value = m
-    }
+    const [r, f, d, v, h, s, m] = await Promise.all([
+      stockApi.getRevenue(props.stockId),
+      stockApi.getFinancials(props.stockId),
+      stockApi.getDividends(props.stockId),
+      stockApi.getValuation(props.stockId),
+      stockApi.getHolders(props.stockId),
+      stockApi.getScore(props.stockId).catch(() => null),
+      stockApi.getMetrics(props.stockId).catch(() => null),
+    ])
+    revenue.value = r
+    financials.value = f
+    dividends.value = d
+    valuation.value = v
+    holders.value = h
+    score.value = s
+    metrics.value = m
     loadedFor = props.stockId
   } finally {
     loading.value = false
@@ -286,19 +272,6 @@ const marginNow = computed(() => {
 function lotsStr(v: number): string {
   return `${v >= 0 ? '+' : ''}${v.toLocaleString()}張`
 }
-
-// ── ETF 行業比重
-const industries = computed(() => etf.value?.industries ?? [])
-const industryPie = computed(() => {
-  const list = industries.value
-  if (list.length <= 9) return list.map(i => ({ name: i.sector, value: i.weight }))
-  const top = list.slice(0, 8)
-  const rest = list.slice(8).reduce((s, i) => s + i.weight, 0)
-  return [...top.map(i => ({ name: i.sector, value: i.weight })), { name: '其餘', value: Math.round(rest * 100) / 100 }]
-})
-function pieColor(i: number): string {
-  return PIE_PALETTE[i % PIE_PALETTE.length]!
-}
 </script>
 
 <template>
@@ -307,128 +280,6 @@ function pieColor(i: number): string {
     type="table"
     :rows="8"
   />
-
-  <!-- ETF：基本資料 + 行業比重 + 成分股 -->
-  <div
-    v-else-if="isEtf"
-    class="space-y-5"
-  >
-    <div
-      v-if="etf?.info?.length"
-      class="fund-sec"
-    >
-      <div class="fund-hd">基本資料</div>
-      <div class="info-grid">
-        <div
-          v-for="[k, v] in etf.info"
-          :key="k"
-          class="info-cell"
-        >
-          <span class="info-k">{{ k }}</span>
-          <a
-            v-if="/^https?:/.test(v)"
-            :href="v"
-            target="_blank"
-            rel="noopener"
-            class="info-v info-link"
-          >{{ v }}</a>
-          <span
-            v-else
-            class="info-v"
-          >{{ v }}</span>
-        </div>
-      </div>
-    </div>
-
-    <div
-      v-if="valuation?.dividendYield != null"
-      class="kpi-grid"
-    >
-      <div class="kpi">
-        <span class="kpi-k">現金殖利率</span>
-        <span class="kpi-v">{{ valuation.dividendYield }}</span>
-        <span class="kpi-x">%</span>
-      </div>
-    </div>
-
-    <div
-      v-if="industries.length"
-      class="fund-sec"
-    >
-      <div class="fund-hd">行業比重</div>
-      <div class="ind-row">
-        <div>
-          <PieChart
-            :data="industryPie"
-            :height="240"
-          />
-        </div>
-        <div class="ind-list">
-          <div
-            v-for="(ind, i) in industries"
-            :key="ind.sector"
-            class="ind-item"
-          >
-            <span
-              class="ind-dot"
-              :style="{ background: pieColor(i) }"
-            />
-            <span class="ind-name">{{ ind.sector }}</span>
-            <span class="ind-w num">{{ ind.weight.toFixed(2) }}%</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="fund-sec">
-      <div class="fund-hd-row">
-        <span class="fund-hd">成分股與權重</span>
-        <span class="fund-hd-side">{{ etf?.holdings.length ?? 0 }} 檔<span v-if="etf?.updatedDate"> · {{ etf.updatedDate.slice(0, 10) }}</span></span>
-      </div>
-      <div
-        v-if="!etf?.holdings.length"
-        class="fund-empty"
-      >
-        無成分資料
-      </div>
-      <table
-        v-else
-        class="fund-table etf-table"
-      >
-        <thead><tr><th>#</th><th>成分股</th><th>權重</th><th>權重占比</th></tr></thead>
-        <tbody>
-          <tr
-            v-for="(h, i) in etf.holdings"
-            :key="h.stockId"
-          >
-            <td class="num">{{ i + 1 }}</td>
-            <td style="text-align:left">
-              <router-link
-                :to="`/stocks/${h.stockId}`"
-                class="etf-link"
-              >{{ h.stockName }}</router-link>
-              <span
-                class="num"
-                style="color:var(--muted);font-size:0.66rem;margin-left:0.35rem"
-              >{{ h.stockId }}</span>
-            </td>
-            <td
-              class="num"
-              style="font-weight:600"
-            >{{ h.weight?.toFixed(2) }}%</td>
-            <td>
-              <div class="etf-bar-track">
-                <div
-                  class="etf-bar-fill"
-                  :style="{ width: `${Math.min(100, (h.weight ?? 0) / (etf.holdings[0]?.weight ?? 1) * 100)}%` }"
-                />
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
 
   <!-- 個股：六分類 -->
   <div
@@ -1095,29 +946,6 @@ function pieColor(i: number): string {
 .score-bar-value { font-size: 0.74rem; font-weight: 600; color: var(--txt); text-align: right; }
 
 /* ETF */
-.etf-table td { padding: 0.45rem 0.5rem; }
-.etf-table th:nth-child(1), .etf-table td:nth-child(1) { width: 2.5rem; text-align: center; color: var(--muted); }
-.etf-table th:nth-child(2), .etf-table td:nth-child(2) { text-align: left; }
-.etf-table th:nth-child(3), .etf-table td:nth-child(3) { text-align: right; width: 5rem; }
-.etf-table th:nth-child(4), .etf-table td:nth-child(4) { text-align: left; width: 40%; }
-.etf-link { color: var(--txt); font-weight: 600; text-decoration: none; }
-.etf-link:hover { color: var(--up); }
-.etf-bar-track { height: 0.5rem; background: var(--bg); border-radius: 999px; overflow: hidden; min-width: 80px; }
-.etf-bar-fill { height: 100%; background: linear-gradient(90deg, var(--up-soft), var(--up)); border-radius: 999px; }
 
-.info-grid { display: grid; grid-template-columns: 1fr; gap: 0; }
-@media (min-width: 768px) { .info-grid { grid-template-columns: 1fr 1fr; column-gap: 1.5rem; } }
-.info-cell { display: grid; grid-template-columns: 6.5rem 1fr; gap: 0.5rem; align-items: start; padding: 0.55rem 0; border-bottom: 1px solid var(--bd-soft); }
-.info-k { font-size: 0.78rem; color: var(--muted); }
-.info-v { font-size: 0.82rem; color: var(--txt); word-break: break-all; }
-.info-link { color: var(--ink); text-decoration: none; }
-.info-link:hover { text-decoration: underline; }
 
-.ind-row { display: grid; grid-template-columns: 1fr; gap: 1rem; }
-@media (min-width: 768px) { .ind-row { grid-template-columns: 1fr 1fr; align-items: center; } }
-.ind-list { display: flex; flex-direction: column; gap: 0.1rem; max-height: 240px; overflow-y: auto; }
-.ind-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0.2rem; border-bottom: 1px solid var(--bd-soft); font-size: 0.82rem; }
-.ind-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
-.ind-name { color: var(--txt); }
-.ind-w { margin-left: auto; font-weight: 600; color: var(--txt); }
 </style>

@@ -10,7 +10,6 @@ from db.models import (
     ValuationModel,
     ShareholderDispersionModel,
     ExDividendCalendarModel,
-    ETFHoldingModel,
     ETFInfoModel,
     DailyQuoteModel,
     MarketIndexModel,
@@ -154,19 +153,6 @@ class DataWriter:
             return 0
         async with get_session() as session:
             return await bulk_upsert(session, ExDividendCalendarModel, records, ["ex_date", "stock_id"])
-
-    @staticmethod
-    async def write_etf_holdings(etf_id: str, records: list[dict]) -> int:
-        if not records:
-            return 0
-        async with get_session() as session:
-            # 先清舊持股再寫（成分會變動）
-            from sqlalchemy import text
-            await session.execute(
-                text("DELETE FROM etf_holdings WHERE etf_id = :e"), {"e": etf_id}
-            )
-            count = await bulk_upsert(session, ETFHoldingModel, records, ["etf_id", "stock_id"])
-        return count
 
     @staticmethod
     async def write_etf_info(etf_id: str, items: list, updated) -> int:

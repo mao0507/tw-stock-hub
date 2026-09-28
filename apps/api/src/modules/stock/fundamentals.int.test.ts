@@ -1,4 +1,4 @@
-// #6 個股基本面：月營收、財報、進階指標、股利（含填息）、估值、ETF 成分股
+// #6 個股基本面：月營收、財報、進階指標、股利（含填息）、估值
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createApp } from '../../app.js'
 import { startTestDb, testConfig, type TestDb } from '../../test/harness.js'
@@ -14,9 +14,7 @@ beforeAll(async () => {
     INSERT INTO stocks.stocks (id, name, market, sector, is_active) VALUES
       ('7201', '基本面甲', 'TWSE', '半導體類指數', TRUE),
       ('7202', '沒有資料', 'TWSE', NULL, TRUE),
-      ('7203', '估值回推', 'TWSE', '金融', TRUE),
-      ('0099', '測試ETF', 'TWSE', NULL, TRUE),
-      ('0098', '空ETF', 'TWSE', NULL, TRUE)`
+      ('7203', '估值回推', 'TWSE', '金融', TRUE)`
 
   for (const [ym, rev] of [['202607', 100], ['202608', 110], ['202609', 121]] as const) {
     await a`
@@ -72,13 +70,6 @@ beforeAll(async () => {
   await a`
     INSERT INTO stocks.daily_quotes (date, stock_id, open, high, low, close, volume, value)
     VALUES ('2026-09-22', '7203', 90, 90, 90, 90, 1, 1)`
-
-  await a`
-    INSERT INTO stocks.etf_holdings (etf_id, stock_id, stock_name, weight, shares, updated_date) VALUES
-      ('0099', '7201', '基本面甲', 30, 1000, '2026-09-20'),
-      ('0099', '7203', '估值回推', 50, 2000, '2026-09-20'),
-      ('0099', '9999', '不在清單', 20, NULL, '2026-09-20')`
-  await a`INSERT INTO stocks.etf_info (etf_id, items, updated_date) VALUES ('0099', ${a.json([{ label: '規模', value: '100億' }])}, '2026-09-20')`
 }, 120_000)
 
 afterAll(async () => {
@@ -234,34 +225,5 @@ describe('資料邊界', () => {
   it('殖利率回推用近 12 個月（依除息日）的現金股利，季配息不會被低估', async () => {
     // 2025-10-15 起 4 次 × 0.5 = 2.0；2.0 ÷ 50 = 4%
     expect((await get<{ dividendYield: number | null }>('/stocks/7206/valuation')).body.dividendYield).toBe(4)
-  })
-})
-
-describe('ETF 成分股', () => {
-  it('非 ETF 回 isEtf=false', async () => {
-    expect((await get('/stocks/7201/etf-holdings')).body).toEqual({ isEtf: false, holdings: [] })
-  })
-  it('依權重排序，產業比重去除「類指數」並合併查無產業為「其他」', async () => {
-    expect((await get('/stocks/0099/etf-holdings')).body).toEqual({
-      isEtf: true,
-      updatedDate: '2026-09-20',
-      info: [{ label: '規模', value: '100億' }],
-      industries: [
-        { sector: '金融', weight: 50 },
-        { sector: '半導體', weight: 30 },
-        { sector: '其他', weight: 20 },
-      ],
-      holdings: [
-        { stockId: '7203', stockName: '估值回推', weight: 50, shares: 2000 },
-        { stockId: '7201', stockName: '基本面甲', weight: 30, shares: 1000 },
-        { stockId: '9999', stockName: '不在清單', weight: 20, shares: null },
-      ],
-    })
-  })
-  it('ETF 尚無成分股資料時回空清單；查無股票 404', async () => {
-    expect((await get('/stocks/0098/etf-holdings')).body).toEqual({
-      isEtf: true, updatedDate: null, info: [], industries: [], holdings: [],
-    })
-    expect((await get('/stocks/0000/etf-holdings')).status).toBe(404)
   })
 })

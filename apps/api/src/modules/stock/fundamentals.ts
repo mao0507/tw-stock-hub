@@ -2,7 +2,7 @@ import { createRoute, type OpenAPIHono, z } from '@hono/zod-openapi'
 import { and, asc, desc, eq, isNotNull, sql } from 'drizzle-orm'
 import type { Db } from '../../db/client.js'
 import {
-  balanceSheets, dailyQuotes, dividends, etfHoldings, etfInfo, financialStatements, monthlyRevenue, valuations,
+  balanceSheets, dailyQuotes, dividends, financialStatements, monthlyRevenue, valuations,
 } from '../../db/schema/stocks.js'
 import {
   type BsRow, calcFill, type DividendRow, type FinRow, latestAnnualCash, payoutRatios, pct, quarterlyMetrics, round2,
@@ -10,9 +10,8 @@ import {
 } from './fundamentals-calc.js'
 import { cached, ErrorBody, findActiveStock, IdParam, json, NOT_FOUND, notFoundBody, num } from './shared.js'
 
-// 個股基本面（#6）：月營收、財報、進階指標、股利（含填息）、估值、ETF 成分股
+// 個股基本面（#6）：月營收、財報、進階指標、股利（含填息）、估值（ETF 成分見 etf.ts）
 
-const isEtf = (id: string) => /^00/.test(id)
 const NumOrNull = z.number().nullable()
 const limitQuery = (def: number, max: number) =>
   z.object({ limit: z.coerce.number().int().min(1).max(max).default(def) })
@@ -102,12 +101,6 @@ const routes = {
       ),
       404: json(ErrorBody, '查無股票'),
     },
-  }),
-  etfHoldings: createRoute({
-    method: 'get',
-    path: '/stocks/{id}/etf-holdings',
-    request: { params: IdParam },
-    responses: { 200: json(z.record(z.string(), z.unknown()), 'ETF 成分股、產業比重、基本資料'), 404: json(ErrorBody, '查無股票') },
   }),
 }
 
@@ -266,35 +259,6 @@ export function registerFundamentalRoutes(app: OpenAPIHono, db: Db) {
         dividendYield,
         ttmEps: ttmEps != null ? round2(ttmEps) : null,
         history: history.reverse().map((h) => ({ date: h.date, pe: Number(h.pe) })),
-      }
-    })
-    return 'notFound' in r ? c.json(notFoundBody(id), 404) : c.json(r.data, 200)
-  })
-
-  app.openapi(routes.etfHoldings, async (c) => {
-    const { id } = c.req.valid('param')
-    const r = await withStock(`etf:${id}`, id, async () => {
-      if (!isEtf(id)) return { isEtf: false, holdings: [] }
-      const [rows, industries, [info]] = await Promise.all([
-        db.select().from(etfHoldings).where(eq(etfHoldings.etfId, id)).orderBy(desc(etfHoldings.weight)),
-        db.execute<{ sector: string | null; weight: string }>(sql`
-          SELECT s.sector, SUM(e.weight) AS weight
-          FROM stocks.etf_holdings e
-          LEFT JOIN stocks.stocks s ON s.id = e.stock_id
-          WHERE e.etf_id = ${id}
-          GROUP BY s.sector
-          ORDER BY SUM(e.weight) DESC`),
-        db.select({ items: etfInfo.items }).from(etfInfo).where(eq(etfInfo.etfId, id)),
-      ])
-      return {
-        isEtf: true,
-        updatedDate: rows[0]?.updatedDate ?? null,
-        info: (info?.items as unknown[] | null) ?? [],
-        industries: industries.map((i) => ({
-          sector: i.sector ? i.sector.replace('類指數', '') : '其他',
-          weight: round2(Number(i.weight)),
-        })),
-        holdings: rows.map((h) => ({ stockId: h.stockId, stockName: h.stockName, weight: num(h.weight), shares: h.shares })),
       }
     })
     return 'notFound' in r ? c.json(notFoundBody(id), 404) : c.json(r.data, 200)

@@ -337,15 +337,19 @@ CREATE TRIGGER stocks_updated_at
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- ── ETF（原由 ORM 建立，補進 init）──
-CREATE TABLE IF NOT EXISTS etf_holdings (
-  etf_id       VARCHAR(10) NOT NULL,
-  stock_id     VARCHAR(10) NOT NULL,
-  stock_name   VARCHAR(50),
-  weight       NUMERIC(6,2),
+-- ETF 成分（#40）：每期（資料日）一份、保存歷史；台股成分才有 stock_id，symbol 為來源原始代號
+CREATE TABLE IF NOT EXISTS etf_constituents (
+  etf_id       VARCHAR(10)  NOT NULL,
+  data_date    DATE         NOT NULL,
+  holding_name VARCHAR(120) NOT NULL,
+  stock_id     VARCHAR(10),
+  symbol       VARCHAR(20),
+  weight       NUMERIC(7,3),
   shares       BIGINT,
-  updated_date DATE,
-  PRIMARY KEY (etf_id, stock_id)
+  source       VARCHAR(20)  NOT NULL,
+  PRIMARY KEY (etf_id, data_date, holding_name)
 );
+CREATE INDEX IF NOT EXISTS idx_etf_constituents_stock ON etf_constituents (stock_id, data_date DESC);
 
 CREATE TABLE IF NOT EXISTS etf_info (
   etf_id       VARCHAR(10) PRIMARY KEY,

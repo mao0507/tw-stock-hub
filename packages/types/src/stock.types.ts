@@ -297,11 +297,15 @@ export interface HolderItem {
   totalHolders: number | null
 }
 
+/** ETF 成分（#40）：台股成分才有 stockId；symbol 為來源原始代號（2330.TW、NVDA.US） */
 export interface EtfHolding {
-  stockId: string
-  stockName: string | null
-  weight: number | null
+  name: string
+  stockId: string | null
+  symbol: string | null
+  weight: number
   shares: number | null
+  close: number | null
+  changePct: number | null
 }
 
 export interface EtfIndustry {
@@ -311,9 +315,11 @@ export interface EtfIndustry {
 
 export interface EtfHoldings {
   isEtf: boolean
-  updatedDate?: string | null
-  info?: [string, string][]
-  industries?: EtfIndustry[]
+  /** 成分資料日 */
+  dataDate: string | null
+  source: string | null
+  info: [string, string][]
+  industries: EtfIndustry[]
   holdings: EtfHolding[]
 }
 
