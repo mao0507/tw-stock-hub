@@ -255,9 +255,45 @@ async def fetch_cathay(client: httpx.AsyncClient, etf_id: str) -> tuple[date | N
     return None, []
 
 
+# ── 富邦：websys.fsit.com.tw/FubonETF/Trade/Assets.aspx?stkId=代號（HTML；股票、期貨、債券各一張表）
+
+def parse_fubon(html: str) -> tuple[date | None, Rows]:
+    from bs4 import BeautifulSoup
+
+    soup = BeautifulSoup(html, "lxml")
+    m = re.search(r"資料日期[：:]\s*(\d{4})/(\d{2})/(\d{2})", soup.get_text(" ", strip=True))
+    data_date = date(int(m[1]), int(m[2]), int(m[3])) if m else None
+    rows: Rows = []
+    for tbl in soup.find_all("table"):
+        trs = [[c.get_text(strip=True) for c in tr.find_all(["td", "th"])] for tr in tbl.find_all("tr")]
+        header = next((r for r in trs if any("權重" in c for c in r) and any("代碼" in c for c in r)), None)
+        if not header:
+            continue
+        col = lambda kw: next((i for i, c in enumerate(header) if kw in c), None)  # noqa: E731
+        ci, ni, wi = col("代碼"), col("名稱"), col("權重")
+        qi = next((col(k) for k in ("股數", "口數") if col(k) is not None), None)  # 債券為「面額」，不當股數
+        for r in trs:
+            if r is header or len(r) < len(header) or "合計" in r[ci]:
+                continue
+            w, q = _num(r[wi]), _num(r[qi]) if qi is not None else None
+            if w is None or not r[ni]:
+                continue
+            rows.append({"name": r[ni][:120], "stock_id": None, "symbol": r[ci] or None,
+                         "weight": round(w, 3), "shares": int(q) if q is not None else None})
+    rows.sort(key=lambda x: -x["weight"])
+    return (data_date, rows) if rows else (None, [])
+
+
+async def fetch_fubon(client: httpx.AsyncClient, etf_id: str) -> tuple[date | None, Rows]:
+    r = await client.get("https://websys.fsit.com.tw/FubonETF/Trade/Assets.aspx", params={"stkId": etf_id, "lan": "TW"})
+    r.raise_for_status()
+    return parse_fubon(r.text)
+
+
 ISSUER_PARSERS: dict[str, tuple[str, Fetcher]] = {
     # 投信（stocks.issuer）→ (來源代碼, 抓取函式)
     "元大": ("yuanta", fetch_yuanta),
     "群益": ("capital", fetch_capital),
     "國泰": ("cathay", fetch_cathay),
+    "富邦": ("fubon", fetch_fubon),
 }

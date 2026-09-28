@@ -49,7 +49,8 @@ def test_pick_source_prefers_issuer_parser():
     assert pick_source("元大")[0] == "yuanta"
     assert pick_source("群益")[0] == "capital"
     assert pick_source("國泰")[0] == "cathay"
-    assert pick_source("富邦") is None
+    assert pick_source("富邦")[0] == "fubon"
+    assert pick_source("復華") is None
     assert pick_source(None) is None
 
 
@@ -115,3 +116,28 @@ def test_cathay_stocks_bonds_futures():
 
 def test_cathay_no_data():
     assert parse_cathay({"result": None, "returnCode": "4005"}, None, None) == []
+
+
+# ── 富邦：Trade/Assets.aspx?stkId=代號（HTML 表格；股票／期貨／債券分表，含「資料日期」）
+from crawlers.fundamental.etf_issuers import parse_fubon  # noqa: E402
+
+fb = lambda etf: (FIX / f"fubon_assets_{etf}.html").read_text(encoding="utf-8")  # noqa: E731
+
+
+def test_fubon_stocks_and_futures():
+    data_date, rows = parse_fubon(fb("006208"))
+    assert data_date == date(2026, 9, 24)
+    assert len(rows) == 51  # 50 檔股票 + 1 口期貨，不含合計列
+    assert rows[0] == {"name": "台積電", "stock_id": None, "symbol": "2330", "weight": 55.972, "shares": 108279064}
+    assert {"name": "2026/10台股指數期貨", "stock_id": None, "symbol": "WTXV6F", "weight": 0.362, "shares": 180} in rows
+
+
+def test_fubon_bonds_face_value_not_shares():
+    data_date, rows = parse_fubon(fb("00696B"))
+    assert data_date == date(2026, 9, 23)
+    assert rows[0] == {"name": "T 4 3/4 08/15/55", "stock_id": None, "symbol": "US912810UM89", "weight": 3.982, "shares": None}
+    assert not any("合計" in r["name"] for r in rows)
+
+
+def test_fubon_empty():
+    assert parse_fubon("<html></html>") == (None, [])
