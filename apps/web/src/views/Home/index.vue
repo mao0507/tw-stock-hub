@@ -487,7 +487,10 @@ function fmtThousandShares(v: number): string {
           <span class="panel-tag">NEWS</span>
         </div>
         <div class="max-h-[520px] overflow-y-auto">
-          <NewsFeed :page-size="10" />
+          <NewsFeed
+            category="market_news"
+            :page-size="10"
+          />
         </div>
       </section>
       <section class="panel">
