@@ -94,3 +94,10 @@ def test_normalize_stock_id():
 )
 def test_parse_volume_in_thousand(value, expected):
     assert DataCleaner.parse_volume_in_thousand(value) == expected
+
+
+def test_is_tradable_code():
+    for code in ["2330", "0050", "006208", "00679B", "00631L", "00632R", "00400A"]:
+        assert DataCleaner.is_tradable_code(code), code
+    for code in ["2881A", "2887E", "ABC", ""]:
+        assert not DataCleaner.is_tradable_code(code), code

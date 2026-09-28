@@ -89,6 +89,8 @@ describe('GET /api/stocks/:id', () => {
       market: 'TWSE',
       sector: '半導體',
       isActive: true,
+      securityType: 'stock',
+      issuer: null,
       latestQuote: {
         date: '2026-09-25',
         open: 109,
@@ -102,6 +104,15 @@ describe('GET /api/stocks/:id', () => {
         transactionCount: 100,
         prevClose: 109,
       },
+    })
+  })
+
+  it('ETF 回傳類型與發行投信', async () => {
+    await t.admin`
+      INSERT INTO stocks.stocks (id, name, market, security_type, issuer)
+      VALUES ('00679B', '元大美債20年', 'TPEX', 'etf_bond', '元大')`
+    expect((await get<Record<string, unknown>>('/stocks/00679B')).body).toMatchObject({
+      id: '00679B', securityType: 'etf_bond', issuer: '元大',
     })
   })
 

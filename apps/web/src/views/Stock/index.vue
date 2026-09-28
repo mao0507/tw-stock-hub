@@ -61,7 +61,7 @@ function goTab(key: string): void {
   if (chipViews.some((v) => v.key === key)) {
     activeTab.value = 'chips'
     chipView.value = key as ChipView
-  } else if (tabs.some((t) => t.key === key)) {
+  } else if (tabs.value.some((t) => t.key === key)) {
     activeTab.value = key as TabKey
   }
 }
@@ -279,16 +279,18 @@ function fmtBroker(name: string): string {
   return label ? `${code} ${label}` : name
 }
 
-const tabs: { key: TabKey; label: string }[] = [
+// ETF 沒有財報：基本面分頁改為成分股（#39；#40 起改為獨立的成分股分頁）
+const isEtf = computed(() => !!currentStock.value && currentStock.value.securityType !== 'stock')
+const tabs = computed<{ key: TabKey; label: string }[]>(() => [
   { key: 'overview', label: '總覽' },
   { key: 'technical', label: '技術分析' },
   { key: 'chips', label: '籌碼分析' },
-  { key: 'fundamental', label: '基本面' },
+  { key: 'fundamental', label: isEtf.value ? '成分股' : '基本面' },
   { key: 'dividend', label: '除權息' },
   { key: 'news', label: '相關新聞' },
   { key: 'mops', label: '重大訊息' },
   { key: 'backtest', label: '回測' },
-]
+])
 </script>
 
 <template>

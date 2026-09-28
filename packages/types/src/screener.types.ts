@@ -3,6 +3,8 @@ import type { Market } from './api.types'
 /** 選股條件（#21）：全部選填、AND 組合。成交量、法人淨買超、融資增減單位為「張」。 */
 export interface ScreenerFilter {
   market?: Market
+  /** 個股或 ETF（預設全部） */
+  securityType?: 'all' | 'stock' | 'etf'
   sector?: string
   // 行情籌碼
   priceMin?: number
@@ -45,6 +47,7 @@ export interface ScreenerResult {
   stockName: string
   market: string
   sector: string | null
+  securityType: string
   close: number
   changePct: number | null
   volume: number

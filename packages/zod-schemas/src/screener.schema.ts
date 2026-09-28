@@ -6,6 +6,7 @@ const range = (min: number, max: number) => z.number().min(min).max(max).optiona
 export const screenerFilterSchema = z
   .object({
     market: z.enum(['TWSE', 'TPEX', 'ALL']).optional(),
+    securityType: z.enum(['all', 'stock', 'etf']).optional(),
     sector: z.string().max(50).optional(),
     priceMin: z.number().min(0).optional(),
     priceMax: z.number().min(0).optional(),

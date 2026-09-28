@@ -34,6 +34,7 @@ const NUM_FIELDS: NumField[] = [
 const empty = () => ({
   ...Object.fromEntries(NUM_FIELDS.map((k) => [k, ''])) as Record<NumField, string | number>,
   market: 'ALL' as Market,
+  securityType: 'all' as 'all' | 'stock' | 'etf',
   bullishAlignment: false,
   aboveMa20: false,
   aboveMa60: false,
@@ -50,6 +51,12 @@ const PRESETS: { label: string; desc: string; set: Partial<ReturnType<typeof emp
 ]
 
 const SIGNAL_OPTIONS = (Object.keys(SIGNAL_META) as SignalCode[]).map((code) => ({ code, ...SIGNAL_META[code] }))
+
+const typeOptions = [
+  { label: '全部', value: 'all' },
+  { label: '個股', value: 'stock' },
+  { label: 'ETF', value: 'etf' },
+]
 
 const marketOptions = [
   { label: '全部', value: 'ALL' },
@@ -91,6 +98,7 @@ function buildPayload() {
   return {
     ...nums,
     market: filter.market !== 'ALL' ? filter.market : undefined,
+    securityType: filter.securityType !== 'all' ? filter.securityType : undefined,
     bullishAlignment: filter.bullishAlignment || undefined,
     aboveMa20: filter.aboveMa20 || undefined,
     aboveMa60: filter.aboveMa60 || undefined,
@@ -210,11 +218,18 @@ const fmt = (v: unknown, dp = 2) => (v == null ? '—' : (v as number).toLocaleS
           </h2>
         </div>
         <div class="space-y-3 p-4">
-          <AppSelect
-            v-model="filter.market"
-            :options="marketOptions"
-            label="市場"
-          />
+          <div class="grid grid-cols-2 gap-2">
+            <AppSelect
+              v-model="filter.market"
+              :options="marketOptions"
+              label="市場"
+            />
+            <AppSelect
+              v-model="filter.securityType"
+              :options="typeOptions"
+              label="類型"
+            />
+          </div>
           <div class="grid grid-cols-2 gap-2">
             <AppInput
               v-model="filter.priceMin"

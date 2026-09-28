@@ -58,7 +58,7 @@ class TPEXDailyQuoteCrawler(BaseCrawler):
         stock_id = DataCleaner.normalize_stock_id(str(row[0]))
         stock_name = str(row[1]).strip()
 
-        if not stock_id.isdigit():
+        if not DataCleaner.is_tradable_code(stock_id):
             return None
         for kw in self.SKIP_KEYWORDS:
             if kw in stock_name:

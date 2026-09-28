@@ -36,7 +36,10 @@ export async function cached<T extends object>(key: string, load: () => Promise<
 /** 上市櫃中的股票（下市視為不存在） */
 export async function findActiveStock(db: Db, id: string) {
   const [row] = await db
-    .select({ id: stocks.id, name: stocks.name, market: stocks.market, sector: stocks.sector, isActive: stocks.isActive })
+    .select({
+      id: stocks.id, name: stocks.name, market: stocks.market, sector: stocks.sector, isActive: stocks.isActive,
+      securityType: stocks.securityType, issuer: stocks.issuer,
+    })
     .from(stocks)
     .where(and(eq(stocks.id, id), eq(stocks.isActive, true)))
   return row ?? null

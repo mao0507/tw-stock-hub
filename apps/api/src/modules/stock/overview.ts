@@ -23,7 +23,12 @@ const LatestQuote = CandleSchema.extend({
   transactionCount: z.number().nullable(),
   prevClose: z.number().nullable(),
 })
-const StockDetail = SearchItem.extend({ isActive: z.boolean(), latestQuote: LatestQuote.nullable() })
+const StockDetail = SearchItem.extend({
+  isActive: z.boolean(),
+  securityType: z.string().describe('stock／etf_equity／etf_foreign／etf_bond／etf_leveraged／etf_other'),
+  issuer: z.string().nullable().describe('ETF 發行投信'),
+  latestQuote: LatestQuote.nullable(),
+})
 
 const routes = {
   search: createRoute({

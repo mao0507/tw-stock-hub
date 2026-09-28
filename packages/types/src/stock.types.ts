@@ -8,7 +8,12 @@ export interface Stock {
   isActive: boolean
 }
 
+export type SecurityType = 'stock' | 'etf_equity' | 'etf_foreign' | 'etf_bond' | 'etf_leveraged' | 'etf_other'
+
 export interface StockLatestQuote extends Stock {
+  securityType: SecurityType
+  /** ETF 發行投信 */
+  issuer: string | null
   latestQuote: LatestQuote | null
 }
 

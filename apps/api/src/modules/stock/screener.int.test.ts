@@ -158,6 +158,17 @@ describe('POST /screener', () => {
     expect((await screen({ signals: ['bad code!'] })).status).toBe(400)
   })
 
+  it('類型條件：個股／ETF', async () => {
+    await t.admin`UPDATE stocks.stocks SET security_type = 'etf_equity' WHERE id = '7403'`
+    expect(await ids({ securityType: 'etf' })).toEqual(['7403'])
+    expect(await ids({ securityType: 'stock' })).toEqual(['7401', '7402'])
+    expect(await ids({ securityType: 'all' })).toEqual(['7401', '7402', '7403'])
+    // 換個條件避開回應快取
+    expect((await screen({ limit: 199 })).body.items.find((i) => i.stockId === '7403')).toMatchObject({ securityType: 'etf_equity' })
+    await t.admin`UPDATE stocks.stocks SET security_type = 'stock' WHERE id = '7403'`
+    expect((await screen({ securityType: 'bond' })).status).toBe(400)
+  })
+
   it('條件以 AND 組合', async () => {
     expect(await ids({ market: 'TWSE', rsMin: 50, yieldMin: 3 })).toEqual(['7401'])
     expect(await ids({ market: 'TPEX', rsMin: 50 })).toEqual([])

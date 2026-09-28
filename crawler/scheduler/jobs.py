@@ -19,6 +19,7 @@ from crawlers.fundamental.fundamentals import (
 from crawlers.fundamental.exdividend import ExDividendCalendarCrawler, refresh_recent_dividends
 from crawlers.fundamental.valuation import ValuationCrawler, ValuationTPEXCrawler
 from crawlers.fundamental.etf import refresh_all_known_etfs
+from crawlers.fundamental.etf_types import refresh_security_types
 from analytics import signals, strength, technical
 from crawlers.news.mops import MOPSNewsCrawler
 from crawlers.news.cnyes import CnyesNewsCrawler
@@ -55,6 +56,7 @@ JOBS: dict[str, JobFn] = {
     "dividend": _crawler(DividendCrawler),
     "holders": _crawler(ShareholderDispersionCrawler),
     "etf_refresh": refresh_all_known_etfs,
+    "etf_types": refresh_security_types,
     "technical": lambda: technical.run(),
     # 首次回補或公式變更時手動執行（約 20 分鐘）
     "technical_full": lambda: technical.run(full=True),

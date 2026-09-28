@@ -48,6 +48,9 @@ class StockModel(Base):
     sector = Column(String(50), nullable=True)
     listing_date = Column(Date, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
+    # 個股 stock／ETF 類型（etf_equity、etf_foreign、etf_bond、etf_leveraged、etf_other），與 init SQL 一致
+    security_type = Column(String(20), nullable=False, server_default="stock")
+    issuer = Column(String(20), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

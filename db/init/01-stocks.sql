@@ -37,9 +37,13 @@ CREATE TABLE IF NOT EXISTS stocks (
   sector       VARCHAR(50),
   listing_date DATE,
   is_active    BOOLEAN       NOT NULL DEFAULT TRUE,
+  -- stock／etf_equity／etf_foreign／etf_bond／etf_leveraged／etf_other（crawler etf_types 維護）
+  security_type VARCHAR(20)  NOT NULL DEFAULT 'stock',
+  issuer       VARCHAR(20),
   created_at   TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
   updated_at   TIMESTAMPTZ   NOT NULL DEFAULT NOW()
 );
+CREATE INDEX IF NOT EXISTS idx_stocks_security_type ON stocks (security_type);
 
 CREATE INDEX IF NOT EXISTS idx_stocks_market    ON stocks (market);
 CREATE INDEX IF NOT EXISTS idx_stocks_sector    ON stocks (sector);

@@ -26,6 +26,7 @@ const SORT = {
 const Filter = z
   .object({
     market: z.enum(['TWSE', 'TPEX', 'ALL']).optional(),
+    securityType: z.enum(['all', 'stock', 'etf']).default('all').describe('個股或 ETF'),
     sector: z.string().max(50).optional(),
     priceMin: z.number().min(0).optional(),
     priceMax: z.number().min(0).optional(),
@@ -69,6 +70,7 @@ const Item = z.object({
   stockName: z.string(),
   market: z.string(),
   sector: z.string().nullable(),
+  securityType: z.string(),
   close: z.number(),
   changePct: z.number().nullable(),
   volume: z.number().describe('張'),
@@ -104,6 +106,8 @@ function conditions(f: Filter): SQL[] {
   const c: SQL[] = []
   const add = (v: unknown, frag: SQL) => { if (v !== undefined) c.push(frag) }
   if (f.market && f.market !== 'ALL') c.push(sql`market = ${f.market}`)
+  if (f.securityType === 'stock') c.push(sql`security_type = 'stock'`)
+  if (f.securityType === 'etf') c.push(sql`security_type <> 'stock'`)
   add(f.sector, sql`sector = ${f.sector}`)
   add(f.priceMin, sql`close >= ${f.priceMin}`)
   add(f.priceMax, sql`close <= ${f.priceMax}`)
@@ -148,7 +152,7 @@ const base = (d: string) => sql`
     FROM stocks.technical_signals WHERE date = ${d} GROUP BY stock_id
   ),
   base AS (
-    SELECT s.id, s.name, s.market::text AS market, s.sector,
+    SELECT s.id, s.name, s.market::text AS market, s.sector, s.security_type,
       q.close::float8 AS close, q.change_pct::float8 AS change_pct, (q.volume / 1000)::float8 AS volume,
       (i.foreign_net / 1000)::float8 AS foreign_net, (i.trust_net / 1000)::float8 AS trust_net,
       m.margin_change::float8 AS margin_change,
@@ -187,7 +191,7 @@ const base = (d: string) => sql`
   )`
 
 type Row = {
-  id: string; name: string; market: string; sector: string | null
+  id: string; name: string; market: string; sector: string | null; security_type: string
   close: number; change_pct: number | null; volume: number
   foreign_net: number | null; trust_net: number | null; margin_change: number | null
   rs_score: number | null; bullish_alignment: boolean; above_ma20: boolean | null; above_ma60: boolean | null
@@ -213,7 +217,7 @@ export function registerScreenerRoutes(app: OpenAPIHono, db: Db) {
       return {
         total: rows[0] ? Number(rows[0].total) : 0,
         items: rows.map((x) => ({
-          stockId: x.id, stockName: x.name, market: x.market, sector: x.sector,
+          stockId: x.id, stockName: x.name, market: x.market, sector: x.sector, securityType: x.security_type,
           close: x.close, changePct: x.change_pct, volume: x.volume,
           foreignNet: x.foreign_net, trustNet: x.trust_net, marginChange: x.margin_change,
           rsScore: x.rs_score, bullishAlignment: x.bullish_alignment, aboveMa20: x.above_ma20, aboveMa60: x.above_ma60,

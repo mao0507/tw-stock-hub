@@ -31,6 +31,8 @@
 0  20 * * 6        python run_job.py financials
 10 20 * * 6        python run_job.py dividend
 0  21 * * 6        python run_job.py holders
+# 證券類型（新上市 ETF）；單一請求
+0  7 * * 1-5      python run_job.py etf_types
 30 21 * * 0        python run_job.py etf_refresh
 
 # ── 新聞 ──

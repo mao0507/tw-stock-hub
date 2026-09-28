@@ -10,6 +10,9 @@ export const stocks = stocksSchema.table('stocks', {
   market: varchar('market', { length: 10 }).notNull(),
   sector: varchar('sector', { length: 50 }),
   isActive: boolean('is_active').notNull(),
+  /** stock／etf_equity／etf_foreign／etf_bond／etf_leveraged／etf_other（#39） */
+  securityType: varchar('security_type', { length: 20 }).notNull(),
+  issuer: varchar('issuer', { length: 20 }),
 })
 
 export const dailyQuotes = stocksSchema.table('daily_quotes', {
