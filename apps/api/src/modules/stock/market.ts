@@ -1,5 +1,5 @@
 import { createRoute, type OpenAPIHono, z } from '@hono/zod-openapi'
-import { and, asc, desc, eq, gte, like, lte, max, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, gte, inArray, like, lte, max, sql } from 'drizzle-orm'
 import type { Db } from '../../db/client.js'
 import { dailyQuotes, marketIndex, sectorPerformance, stocks } from '../../db/schema/stocks.js'
 import { monthKey, weekKey } from './candles.js'
@@ -7,6 +7,18 @@ import { round2 } from './fundamentals-calc.js'
 import { CalendarDate, cached, ErrorBody, json, num } from './shared.js'
 
 // 首頁與大盤（#7）：總覽、歷史、類股熱力圖、類股成分股
+
+// TWSE 合併類指數沒有對應的 stocks.sector，展開成子產業查成分股
+const COMPOSITE_SECTORS: Record<string, string[]> = {
+  水泥窯製類指數: ['水泥類指數', '玻璃陶瓷類指數'],
+  塑膠化工類指數: ['塑膠類指數', '化學類指數', '生技醫療類指數'],
+  化學生技醫療類指數: ['化學類指數', '生技醫療類指數'],
+  機電類指數: ['電機機械類指數', '電器電纜類指數'],
+  電子工業類指數: [
+    '半導體類指數', '電腦及週邊設備類指數', '光電類指數', '通信網路類指數',
+    '電子零組件類指數', '電子通路類指數', '資訊服務類指數', '其他電子類指數',
+  ],
+}
 
 const NumOrNull = z.number().nullable()
 const HistoryItem = z.object({ date: z.string(), close: z.number(), change: z.number(), changePct: z.number(), totalValue: z.number() })
@@ -209,12 +221,13 @@ export function registerMarketRoutes(app: OpenAPIHono, db: Db) {
   app.openapi(routes.sectorStocks, async (c) => {
     const { sector } = c.req.valid('query')
     const data = await cached(`market:sector:${sector}`, async () => {
+      const members = COMPOSITE_SECTORS[sector] ?? [sector]
       // 行情日取該類股成分股的最新交易日（上市、上櫃爬蟲完成時間不同，不能用全表最大日期）
       const [{ latest } = { latest: null }] = await db
         .select({ latest: max(dailyQuotes.date) })
         .from(dailyQuotes)
         .innerJoin(stocks, eq(stocks.id, dailyQuotes.stockId))
-        .where(and(eq(stocks.sector, sector), eq(stocks.isActive, true)))
+        .where(and(inArray(stocks.sector, members), eq(stocks.isActive, true)))
       if (!latest) return { sector, date: null, stocks: [] }
       const rows = await db.execute<{
         stock_id: string
@@ -226,7 +239,7 @@ export function registerMarketRoutes(app: OpenAPIHono, db: Db) {
         SELECT s.id AS stock_id, s.name, q.close, q.change_pct, q.value
         FROM stocks.stocks s
         LEFT JOIN stocks.daily_quotes q ON q.stock_id = s.id AND q.date = ${latest}
-        WHERE s.sector = ${sector} AND s.is_active
+        WHERE s.sector IN ${members} AND s.is_active
         ORDER BY q.change_pct DESC NULLS LAST, s.id`)
       return {
         sector,

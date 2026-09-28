@@ -51,6 +51,7 @@ describe('有資料時', () => {
         ('7303', '類股丙', 'TWSE', '半導體類指數', TRUE),
         ('7304', '下市', 'TWSE', '半導體類指數', FALSE),
         ('7305', '上櫃股', 'TPEX', '櫃買電子類指數', TRUE),
+        ('7306', '玻璃股', 'TPEX', '玻璃陶瓷類指數', TRUE),
         ('0077', '某ETF', 'TWSE', NULL, TRUE)`
     const quote = (id: string, change: number, pct: number) => a`
       INSERT INTO stocks.daily_quotes (date, stock_id, open, high, low, close, volume, value, change, change_pct)
@@ -58,6 +59,7 @@ describe('有資料時', () => {
     await quote('7301', 1, 2)
     await quote('7302', -1, -2)
     await quote('7304', 0, 0)
+    await quote('7306', 1, 1)
     await quote('0077', 1, 1) // ETF：不計入漲跌家數
     // 上櫃股晚一天才有行情：不影響大盤家數，也不影響上市類股的行情日
     await a`
@@ -152,5 +154,10 @@ describe('有資料時', () => {
         { stockId: '7303', stockName: '類股丙', close: null, changePct: null, value: null },
       ],
     })
+  })
+
+  it('合併類指數展開成子產業的成分股', async () => {
+    const { body } = await get(`/market/sector-stocks?sector=${encodeURIComponent('水泥窯製類指數')}`)
+    expect((body as { stocks: { stockId: string }[] }).stocks.map((s) => s.stockId)).toEqual(['7306'])
   })
 })
