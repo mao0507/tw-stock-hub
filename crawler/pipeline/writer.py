@@ -10,7 +10,6 @@ from db.models import (
     ValuationModel,
     ShareholderDispersionModel,
     ExDividendCalendarModel,
-    ETFInfoModel,
     DailyQuoteModel,
     MarketIndexModel,
     InstitutionalTradingModel,
@@ -153,20 +152,6 @@ class DataWriter:
             return 0
         async with get_session() as session:
             return await bulk_upsert(session, ExDividendCalendarModel, records, ["ex_date", "stock_id"])
-
-    @staticmethod
-    async def write_etf_info(etf_id: str, items: list, updated) -> int:
-        from sqlalchemy.dialects.postgresql import insert
-        table = ETFInfoModel.__table__
-        async with get_session() as session:
-            stmt = insert(table).values(etf_id=etf_id, items=items, updated_date=updated)
-            stmt = stmt.on_conflict_do_update(
-                index_elements=["etf_id"],
-                # 用 bracket：.items 會撞到 mapping 的 items() 方法
-                set_={"items": stmt.excluded["items"], "updated_date": stmt.excluded["updated_date"]},
-            )
-            await session.execute(stmt)
-        return len(items)
 
     @staticmethod
     async def upsert_stocks(records: list[dict]) -> int:

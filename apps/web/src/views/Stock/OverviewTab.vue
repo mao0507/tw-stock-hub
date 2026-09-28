@@ -7,15 +7,19 @@ import { stockApi } from '@tw-stock-hub/api-client'
 import type { DailyQuote, Institutional, Margin, Valuation, StockScore } from '@tw-stock-hub/types'
 import IconArrowRight from '~icons/lucide/arrow-right'
 import HeldByEtfs from './HeldByEtfs.vue'
+import EtfFacts from './EtfFacts.vue'
+import EtfTopHoldings from './EtfTopHoldings.vue'
 
 type Period = '1M' | '3M' | '6M' | '1Y'
-type TabKey = 'technical' | 'fundamental' | 'institutional' | 'margin' | 'broker' | 'dividend' | 'backtest' | 'news' | 'mops'
+type TabKey = 'technical' | 'fundamental' | 'holdings' | 'institutional' | 'margin' | 'broker' | 'dividend' | 'backtest' | 'news' | 'mops'
 
 const props = defineProps<{
   stockId: string
   quoteData: DailyQuote[]
   institutionalData: Institutional[]
   marginData: Margin[]
+  /** ETF：估值卡換成 ETF 基本資料，並加前十大成分（#43） */
+  isEtf?: boolean
 }>()
 
 const emit = defineEmits<{ go: [tab: TabKey] }>()
@@ -124,7 +128,14 @@ function fmtNet(v: number): string {
 
       <!-- 右欄：估值 + 籌碼速覽 -->
       <div class="flex flex-col gap-4">
-        <div class="panel">
+        <EtfFacts
+          v-if="isEtf"
+          :stock-id="stockId"
+        />
+        <div
+          v-else
+          class="panel"
+        >
           <div class="panel-hd">
             <span class="panel-title">估值與體質</span>
             <button class="ov-more" @click="emit('go', 'fundamental')">基本面 <IconArrowRight class="inline align-[-2px]" aria-hidden="true" /></button>
@@ -204,7 +215,15 @@ function fmtNet(v: number): string {
       </div>
     </div>
 
-    <HeldByEtfs :stock-id="stockId" />
+    <EtfTopHoldings
+      v-if="isEtf"
+      :stock-id="stockId"
+      @go="emit('go', $event)"
+    />
+    <HeldByEtfs
+      v-else
+      :stock-id="stockId"
+    />
 
     <div class="panel">
       <div class="panel-hd">

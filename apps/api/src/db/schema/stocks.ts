@@ -169,11 +169,6 @@ export const technicalSignals = stocksSchema.table('technical_signals', {
   values: jsonb('values').notNull(),
 })
 
-export const etfInfo = stocksSchema.table('etf_info', {
-  etfId: varchar('etf_id', { length: 10 }).notNull(),
-  items: jsonb('items'),
-  updatedDate: date('updated_date'),
-})
 
 export const marketIndex = stocksSchema.table('market_index', {
   date: date('date').notNull(),

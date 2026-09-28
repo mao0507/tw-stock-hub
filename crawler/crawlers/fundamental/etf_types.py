@@ -6,10 +6,11 @@
 
 import httpx
 from loguru import logger
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
+from sqlalchemy.dialects.postgresql import insert
 
 from db.connection import get_session
-from db.models import StockModel
+from db.models import ETFProfileModel, StockModel
 
 URL = "https://openapi.twse.com.tw/v1/opendata/t187ap47_L"
 
@@ -29,6 +30,11 @@ def issuer_of(fund_name: str | None) -> str | None:
         if text.startswith(name):
             return ISSUER_ALIAS.get(name, name)
     return None
+
+
+def tracking_index_of(row: dict) -> str | None:
+    name = (row.get("標的指數/追蹤指數名稱") or "").strip()
+    return None if name in ("", "不適用", "NA", "N/A") else name
 
 
 def classify(code: str, fund_type: str | None) -> str:
@@ -80,6 +86,18 @@ async def refresh_security_types() -> int:
                 update(StockModel).where(StockModel.id == item["id"])
                 .values(security_type=item["security_type"], issuer=item["issuer"])
             )
+        # 追蹤指數（官方）寫入 ETF 基本資料；其餘欄位由 etf_refresh 從 MoneyDJ 補
+        indexes = [
+            {"etf_id": code, "tracking_index": idx}
+            for code, r in ((r.get("基金代號", "").strip(), r) for r in rows)
+            if (idx := tracking_index_of(r)) and code in {x["id"] for x in resolved}
+        ]
+        if indexes:
+            stmt = insert(ETFProfileModel.__table__).values(indexes)
+            await session.execute(stmt.on_conflict_do_update(
+                index_elements=["etf_id"],
+                set_={"tracking_index": stmt.excluded.tracking_index, "updated_at": func.now()},
+            ))
     etfs = [x for x in resolved if x["security_type"] != "stock"]
     unknown = [x["id"] for x in etfs if x["issuer"] is None]
     if unknown:

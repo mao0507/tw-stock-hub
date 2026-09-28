@@ -351,10 +351,24 @@ CREATE TABLE IF NOT EXISTS etf_constituents (
 );
 CREATE INDEX IF NOT EXISTS idx_etf_constituents_stock ON etf_constituents (stock_id, data_date DESC);
 
-CREATE TABLE IF NOT EXISTS etf_info (
-  etf_id       VARCHAR(10) PRIMARY KEY,
-  items        JSONB,
-  updated_date DATE
+-- ETF 基本資料（#43）：每檔一列只存最新；追蹤指數以 TWSE 為準，其餘取自 MoneyDJ
+CREATE TABLE IF NOT EXISTS etf_profiles (
+  etf_id             VARCHAR(10) PRIMARY KEY,
+  tracking_index     VARCHAR(120),
+  inception_date     DATE,
+  listing_date       DATE,
+  aum_million        NUMERIC(14,2),
+  aum_date           DATE,
+  currency           VARCHAR(10),
+  holdings_count     INTEGER,
+  asset_class        VARCHAR(20),
+  region             VARCHAR(20),
+  dividend_frequency VARCHAR(20),
+  management_fee     NUMERIC(6,3),
+  total_expense      NUMERIC(6,3),
+  custodian          VARCHAR(50),
+  website            VARCHAR(300),
+  updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- ── pending_jobs（admin 手動觸發，crawler 每分鐘輪詢）──

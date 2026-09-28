@@ -456,6 +456,7 @@ watch(tabs, (list) => { if (!list.some((t) => t.key === activeTab.value)) active
           v-if="activeTab === 'overview'"
           :stock-id="stockId"
           :quote-data="quoteData"
+          :is-etf="isEtf"
           :institutional-data="institutionalData"
           :margin-data="marginData"
           @go="goTab"

@@ -1,10 +1,9 @@
 import { createRoute, type OpenAPIHono, z } from '@hono/zod-openapi'
-import { eq, sql } from 'drizzle-orm'
+import { sql } from 'drizzle-orm'
 import type { Db } from '../../db/client.js'
-import { etfInfo } from '../../db/schema/stocks.js'
 import { cached, ErrorBody, findActiveStock, IdParam, json, NOT_FOUND, notFoundBody } from './shared.js'
 
-// ETF 成分（#40）：最新一期成分清單與產業分布；與上期比較（#41）；持有本股的 ETF（#42）。成分表保存每期歷史。
+// ETF：基本資料（#43）、最新一期成分與產業分布（#40）、與上期比較（#41）、持有本股的 ETF（#42）。成分表保存每期歷史。
 
 const Holding = z.object({
   name: z.string(),
@@ -25,7 +24,6 @@ const route = createRoute({
       isEtf: z.boolean(),
       dataDate: z.string().nullable(),
       source: z.string().nullable(),
-      info: z.array(z.unknown()).describe('MoneyDJ 基本資料（#43 改為結構化）'),
       industries: z.array(z.object({ sector: z.string(), weight: z.number() })),
       holdings: z.array(Holding),
     }), 'ETF 最新一期成分與產業分布'),
@@ -63,6 +61,32 @@ const heldByRoute = createRoute({
   },
 })
 
+const Profile = z.object({
+  etfId: z.string(),
+  securityType: z.string(),
+  issuer: z.string().nullable(),
+  trackingIndex: z.string().nullable(),
+  inceptionDate: z.string().nullable(),
+  listingDate: z.string().nullable(),
+  aumMillion: z.number().nullable().describe('規模（百萬台幣）'),
+  aumDate: z.string().nullable(),
+  currency: z.string().nullable(),
+  holdingsCount: z.number().nullable(),
+  assetClass: z.string().nullable(),
+  region: z.string().nullable(),
+  dividendFrequency: z.string().nullable(),
+  managementFee: z.number().nullable().describe('經理費 %'),
+  totalExpense: z.number().nullable().describe('總管理費用 %（含保管費等非管理費用）'),
+  custodian: z.string().nullable(),
+  website: z.string().nullable(),
+})
+const profileRoute = createRoute({
+  method: 'get',
+  path: '/stocks/{id}/etf-profile',
+  request: { params: IdParam },
+  responses: { 200: json(Profile, 'ETF 基本資料（#43）'), 404: json(ErrorBody, '查無 ETF') },
+})
+
 const round2 = (v: number) => Math.round(v * 100) / 100
 const n = (v: string | null) => (v == null ? null : Number(v))
 
@@ -72,6 +96,30 @@ type Row = {
 }
 
 export function registerEtfRoutes(app: OpenAPIHono, db: Db) {
+  app.openapi(profileRoute, async (c) => {
+    const { id } = c.req.valid('param')
+    const r = await cached(`etf-profile:${id}`, async () => {
+      const stock = await findActiveStock(db, id)
+      if (!stock || stock.securityType === 'stock') return NOT_FOUND
+      const [p] = await db.execute<Record<string, string | number | null>>(sql`
+        SELECT tracking_index, inception_date::text, listing_date::text, aum_million, aum_date::text, currency,
+          holdings_count, asset_class, region, dividend_frequency, management_fee, total_expense, custodian, website
+        FROM stocks.etf_profiles WHERE etf_id = ${id}`)
+      const s = (k: string) => (p?.[k] ?? null) as string | null
+      return {
+        data: {
+          etfId: id, securityType: stock.securityType, issuer: stock.issuer,
+          trackingIndex: s('tracking_index'), inceptionDate: s('inception_date'), listingDate: s('listing_date'),
+          aumMillion: n(s('aum_million')), aumDate: s('aum_date'), currency: s('currency'),
+          holdingsCount: n(s('holdings_count')), assetClass: s('asset_class'), region: s('region'),
+          dividendFrequency: s('dividend_frequency'), managementFee: n(s('management_fee')),
+          totalExpense: n(s('total_expense')), custodian: s('custodian'), website: s('website'),
+        },
+      }
+    })
+    return 'notFound' in r ? c.json(notFoundBody(id), 404) : c.json(r.data, 200)
+  })
+
   app.openapi(heldByRoute, async (c) => {
     const { id } = c.req.valid('param')
     const r = await cached(`held-by-etfs:${id}`, async () => {
@@ -137,13 +185,10 @@ export function registerEtfRoutes(app: OpenAPIHono, db: Db) {
       const stock = await findActiveStock(db, id)
       if (!stock) return NOT_FOUND
       if (stock.securityType === 'stock') {
-        return { data: { isEtf: false, dataDate: null, source: null, info: [], industries: [], holdings: [] } }
+        return { data: { isEtf: false, dataDate: null, source: null, industries: [], holdings: [] } }
       }
       // 行情是 hypertable：先查最新交易日，再以常數日期 JOIN
-      const [[latest], [info]] = await Promise.all([
-        db.execute<{ d: string | null }>(sql`SELECT MAX(date)::text AS d FROM stocks.daily_quotes`),
-        db.select({ items: etfInfo.items }).from(etfInfo).where(eq(etfInfo.etfId, id)),
-      ])
+      const [latest] = await db.execute<{ d: string | null }>(sql`SELECT MAX(date)::text AS d FROM stocks.daily_quotes`)
       const rows = await db.execute<Row>(sql`
         SELECT e.data_date::text, e.source, e.holding_name, e.stock_id, e.symbol, e.weight, e.shares,
           s.sector, q.close, q.change_pct
@@ -163,7 +208,6 @@ export function registerEtfRoutes(app: OpenAPIHono, db: Db) {
           isEtf: true,
           dataDate: rows[0]?.data_date ?? null,
           source: rows[0]?.source ?? null,
-          info: (info?.items as unknown[] | null) ?? [],
           industries: [...bySector]
             .map(([sector, weight]) => ({ sector, weight: round2(weight) }))
             .sort((a, b) => b.weight - a.weight),

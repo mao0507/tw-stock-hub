@@ -315,11 +315,25 @@ class ETFConstituentModel(Base):
     source = Column(String(20), nullable=False)
 
 
-class ETFInfoModel(Base):
-    __tablename__ = "etf_info"
+class ETFProfileModel(Base):
+    """ETF 基本資料（#43）：每檔一列只存最新。追蹤指數以 TWSE 為準（etf_types），其餘取自 MoneyDJ（etf_refresh）。"""
+    __tablename__ = "etf_profiles"
     etf_id = Column(String(10), primary_key=True)
-    items = Column(JSONB)
-    updated_date = Column(Date)
+    tracking_index = Column(String(120))
+    inception_date = Column(Date)
+    listing_date = Column(Date)
+    aum_million = Column(Numeric(14, 2))
+    aum_date = Column(Date)
+    currency = Column(String(10))
+    holdings_count = Column(Integer)
+    asset_class = Column(String(20))
+    region = Column(String(20))
+    dividend_frequency = Column(String(20))
+    management_fee = Column(Numeric(6, 3))
+    total_expense = Column(Numeric(6, 3))
+    custodian = Column(String(50))
+    website = Column(String(300))
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 
 class NewsModel(Base):

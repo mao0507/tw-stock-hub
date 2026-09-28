@@ -73,35 +73,6 @@ const w = (v: number) => `${v.toFixed(2)}%`
     class="space-y-5"
   >
     <div
-      v-if="data.info?.length"
-      class="fund-sec"
-    >
-      <div class="fund-hd">
-        基本資料
-      </div>
-      <div class="info-grid">
-        <div
-          v-for="[k, v] in data.info"
-          :key="k"
-          class="info-cell"
-        >
-          <span class="info-k">{{ k }}</span>
-          <a
-            v-if="/^https?:/.test(v)"
-            :href="v"
-            target="_blank"
-            rel="noopener"
-            class="info-v info-link"
-          >{{ v }}</a>
-          <span
-            v-else
-            class="info-v"
-          >{{ v }}</span>
-        </div>
-      </div>
-    </div>
-
-    <div
       v-if="industries.length"
       class="fund-sec"
     >
@@ -312,13 +283,6 @@ const w = (v: number) => `${v.toFixed(2)}%`
 </template>
 
 <style scoped>
-.info-grid { display: grid; grid-template-columns: 1fr; gap: 0; }
-@media (min-width: 768px) { .info-grid { grid-template-columns: 1fr 1fr; column-gap: 1.5rem; } }
-.info-cell { display: grid; grid-template-columns: 6.5rem 1fr; gap: 0.5rem; align-items: start; padding: 0.55rem 0; border-bottom: 1px solid var(--bd-soft); }
-.info-k { font-size: 0.78rem; color: var(--muted); }
-.info-v { font-size: 0.82rem; color: var(--txt); word-break: break-all; }
-.info-link { color: var(--ink); text-decoration: none; }
-.info-link:hover { text-decoration: underline; }
 .ind-row { display: grid; grid-template-columns: 1fr; gap: 1rem; }
 @media (min-width: 768px) { .ind-row { grid-template-columns: 1fr 1fr; align-items: center; } }
 .ind-list { display: flex; flex-direction: column; gap: 0.1rem; max-height: 280px; overflow-y: auto; }

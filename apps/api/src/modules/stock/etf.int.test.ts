@@ -1,4 +1,4 @@
-// #40 ETF 成分：最新一期清單＋產業分布；#41 與上期比較
+// #40 ETF 成分：最新一期清單＋產業分布；#41 與上期比較；#42 持有本股的 ETF；#43 ETF 基本資料
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createApp } from '../../app.js'
 import { startTestDb, testConfig, type TestDb } from '../../test/harness.js'
@@ -10,7 +10,6 @@ type Holdings = {
   isEtf: boolean
   dataDate: string | null
   source: string | null
-  info: unknown[]
   industries: { sector: string; weight: number }[]
   holdings: { name: string; stockId: string | null; symbol: string | null; weight: number; shares: number | null; close: number | null; changePct: number | null }[]
 }
@@ -55,7 +54,12 @@ beforeAll(async () => {
       ('0097', '2026-09-24', '新納入', NULL, NULL, 24.5, NULL, 'moneydj'),
       ('0096', '2026-09-23', '台積電', '2330', '2330.TW', 50, 1, 'moneydj'),
       ('0096', '2026-09-24', '台積電', '2330', '2330.TW', 51, 1, 'yuanta')`
-  await a`INSERT INTO stocks.etf_info (etf_id, items, updated_date) VALUES ('0099', ${a.json([['資產規模', '100億']])}, '2026-09-20')`
+  await a`UPDATE stocks.stocks SET issuer = '元大' WHERE id = '0099'`
+  await a`
+    INSERT INTO stocks.etf_profiles (etf_id, tracking_index, inception_date, listing_date, aum_million, aum_date, currency,
+      holdings_count, asset_class, region, dividend_frequency, management_fee, total_expense, custodian, website)
+    VALUES ('0099', '臺灣高股息報酬指數', '2007-12-13', '2007-12-26', 797788.3, '2026-09-24', '台幣',
+      50, '股票型', '台灣', '季配', 0.4, 0.57, '中國信託商業銀行', 'https://example.com/0099')`
 }, 120_000)
 
 afterAll(async () => {
@@ -66,7 +70,7 @@ describe('GET /stocks/{id}/etf-holdings', () => {
   it('最新一期成分依權重排序；台股附收盤與漲跌，非台股只有名稱、代號、權重', async () => {
     const { status, body } = await get('0099')
     expect(status).toBe(200)
-    expect(body).toMatchObject({ isEtf: true, dataDate: '2026-09-24', source: 'moneydj', info: [['資產規模', '100億']] })
+    expect(body).toMatchObject({ isEtf: true, dataDate: '2026-09-24', source: 'moneydj' })
     expect(body.holdings).toEqual([
       { name: '台積電', stockId: '2330', symbol: '2330.TW', weight: 50.5, shares: 1000, close: 1005, changePct: 0.5 },
       { name: '國泰金', stockId: '2882', symbol: '2882.TW', weight: 29.5, shares: 2000, close: 59, changePct: -1.67 },
@@ -87,7 +91,7 @@ describe('GET /stocks/{id}/etf-holdings', () => {
   it('非 ETF 回 isEtf=false；ETF 無資料回空；查無股票 404', async () => {
     expect((await get('2330')).body).toMatchObject({ isEtf: false, holdings: [] })
     expect((await get('0098')).body).toEqual({
-      isEtf: true, dataDate: null, source: null, info: [], industries: [], holdings: [],
+      isEtf: true, dataDate: null, source: null, industries: [], holdings: [],
     })
     expect((await get('0000')).status).toBe(404)
   })
@@ -153,5 +157,29 @@ describe('GET /stocks/{id}/held-by-etfs', () => {
     expect((await heldBy('2882')).body.map((x) => [x.etfId, x.weight])).toEqual([['0097', 30], ['0099', 29.5]])
     expect((await heldBy('0098')).body).toEqual([])
     expect((await heldBy('0000')).status).toBe(404)
+  })
+})
+
+const profile = async (id: string) => {
+  const res = await app.request(`/api/stocks/${id}/etf-profile`)
+  return { status: res.status, body: (await res.json()) as Record<string, unknown> }
+}
+
+describe('GET /stocks/{id}/etf-profile', () => {
+  it('回傳 ETF 基本資料（含類型與發行投信）', async () => {
+    const { status, body } = await profile('0099')
+    expect(status).toBe(200)
+    expect(body).toEqual({
+      etfId: '0099', securityType: 'etf_equity', issuer: '元大', trackingIndex: '臺灣高股息報酬指數',
+      inceptionDate: '2007-12-13', listingDate: '2007-12-26', aumMillion: 797788.3, aumDate: '2026-09-24',
+      currency: '台幣', holdingsCount: 50, assetClass: '股票型', region: '台灣', dividendFrequency: '季配',
+      managementFee: 0.4, totalExpense: 0.57, custodian: '中國信託商業銀行', website: 'https://example.com/0099',
+    })
+  })
+
+  it('尚無基本資料時欄位為 null；非 ETF 或查無股票 404', async () => {
+    expect((await profile('0098')).body).toMatchObject({ etfId: '0098', securityType: 'etf_foreign', trackingIndex: null, aumMillion: null })
+    expect((await profile('2330')).status).toBe(404)
+    expect((await profile('0000')).status).toBe(404)
   })
 })

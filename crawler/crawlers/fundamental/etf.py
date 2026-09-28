@@ -2,7 +2,7 @@
 
 - etf_holdings（每日）：成分表含資料日期，只有資料日期比 DB 最新一期新才寫入，保存每期歷史。
   台股成分附代號（2330.TW／.TWO）；海外股保留原始代號（NVDA.US）；債券、期貨、現金沒有代號。
-- etf_refresh（每週）：基本資料頁。
+- etf_refresh（每週）：基本資料頁 → etf_profiles（追蹤指數若 TWSE 已提供則不覆蓋）。
 """
 
 import asyncio
@@ -18,27 +18,12 @@ from sqlalchemy.dialects.postgresql import insert
 
 from config import settings
 from db.connection import get_session
-from db.models import ETFConstituentModel, StockModel
-from pipeline.writer import DataWriter
+from db.models import ETFConstituentModel, ETFProfileModel, StockModel
 
 URL = "https://www.moneydj.com/etf/x/Basic/Basic0007b.xdjhtm"
 INFO_URL = "https://www.moneydj.com/etf/x/Basic/Basic0004.xdjhtm"
 SOURCE = "moneydj"
 
-# 基本資料欄位白名單（key 子字串 → 顯示標籤），保序
-INFO_FIELDS = [
-    ("基金名稱", "全名"), ("全名", "全名"),
-    ("發行公司", "發行公司"),
-    ("追蹤指數", "追蹤指數"),
-    ("計價幣別", "計價幣別"),
-    ("投資地區", "投資地區"),
-    ("成立日", "成立日"),
-    ("ETF規模", "資產規模"), ("資產規模", "資產規模"),
-    ("經理費", "經理費率"),
-    ("總管理費用", "總管理費"), ("保管費", "保管費率"),
-    ("經理人", "經理人"),
-    ("官方網站", "官方網站"), ("網站", "官方網站"),
-]
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -105,28 +90,42 @@ def plan_records(etf_id: str, data_date: date | None, rows: list[dict], latest: 
     return list(merged.values())
 
 
-def parse_info(html: str) -> list[list[str]]:
-    """解析基本資料 → 保序 [[label, value], ...]，過濾導覽雜訊。"""
+def _date(v: str | None) -> date | None:
+    m = re.search(r"(\d{4})/(\d{2})/(\d{2})", v or "")
+    return date(int(m[1]), int(m[2]), int(m[3])) if m else None
+
+
+def parse_profile(html: str) -> dict | None:
+    """解析 MoneyDJ 基本資料頁（欄位成對出現：[標籤, 值, 標籤, 值]）→ etf_profiles 欄位。"""
     soup = BeautifulSoup(html, "lxml")
     raw: dict[str, str] = {}
-    for tbl in soup.find_all("table"):
-        for tr in tbl.find_all("tr"):
-            cells = [td.get_text(strip=True) for td in tr.find_all(["td", "th"])]
-            for i in range(0, len(cells) - 1, 2):
-                k, v = cells[i], cells[i + 1]
-                if k and v and len(k) <= 12 and len(v) <= 80:
-                    raw.setdefault(k, v)
-    out: list[list[str]] = []
-    seen: set[str] = set()
-    for key_sub, label in INFO_FIELDS:
-        if label in seen:
-            continue
-        for k, v in raw.items():
-            if key_sub in k:
-                out.append([label, v])
-                seen.add(label)
-                break
-    return out
+    for tr in soup.find_all("tr"):
+        cells = [td.get_text(" ", strip=True) for td in tr.find_all(["td", "th"])]
+        for i in range(0, len(cells) - 1, 2):
+            if cells[i] and len(cells[i]) <= 12:
+                raw.setdefault(cells[i], cells[i + 1])
+    if "ETF名稱" not in raw:
+        return None
+    aum = raw.get("ETF規模", "")
+    aum_m = re.match(r"([\d,.]+)", aum)
+    count = _num(raw.get("成分股數", ""))
+    text = lambda k: raw.get(k) or None  # noqa: E731
+    return {
+        "inception_date": _date(raw.get("成立日期")),
+        "listing_date": _date(raw.get("上市日期")),
+        "aum_million": _num(aum_m[1]) if aum_m else None,
+        "aum_date": _date(aum.split("(", 2)[-1] if aum.count("(") >= 2 else None),
+        "currency": text("計價幣別"),
+        "holdings_count": int(count) if count is not None else None,
+        "asset_class": text("投資標的"),
+        "region": text("投資區域"),
+        "dividend_frequency": text("配息頻率"),
+        "management_fee": _num(raw.get("經理費(%)", "")),
+        "total_expense": _num(raw.get("總管理費用(%)", "").split("(")[0]),
+        "custodian": text("保管機構"),
+        "tracking_index": text("追蹤指數"),
+        "website": (text("官方網站連結") or "")[:300] or None,
+    }
 
 
 async def _etfs() -> list[tuple[str, str]]:
@@ -181,16 +180,22 @@ async def refresh_holdings() -> int:
 
 
 async def refresh_all_known_etfs() -> int:
-    """每週：全部 ETF 基本資料。"""
-    today = date.today()
+    """每週：全部 ETF 基本資料 → etf_profiles。"""
     count = 0
     async with httpx.AsyncClient(timeout=30, verify=False, follow_redirects=True, headers=HEADERS) as c:
         for etf_id, _ in await _etfs():
             try:
                 ri = await c.get(INFO_URL, params={"etfid": f"{etf_id}.TW"})
-                info = parse_info(ri.text)
-                if info:
-                    await DataWriter.write_etf_info(etf_id, info, today)
+                profile = parse_profile(ri.text)
+                if profile:
+                    table = ETFProfileModel.__table__
+                    stmt = insert(table).values(etf_id=etf_id, **profile)
+                    fields = {k: stmt.excluded[k] for k in profile if k != "tracking_index"}
+                    # 追蹤指數以 TWSE 官方為準（etf_types 寫入），MoneyDJ 只補空值
+                    fields["tracking_index"] = func.coalesce(table.c.tracking_index, stmt.excluded.tracking_index)
+                    fields["updated_at"] = func.now()
+                    async with get_session() as session:
+                        await session.execute(stmt.on_conflict_do_update(index_elements=["etf_id"], set_=fields))
                     count += 1
             except Exception as e:
                 logger.error(f"[ETF基本資料] {etf_id} 失敗: {e}")

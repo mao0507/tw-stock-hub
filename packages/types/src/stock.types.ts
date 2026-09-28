@@ -318,7 +318,6 @@ export interface EtfHoldings {
   /** 成分資料日 */
   dataDate: string | null
   source: string | null
-  info: [string, string][]
   industries: EtfIndustry[]
   holdings: EtfHolding[]
 }
@@ -332,6 +331,27 @@ export interface EtfChanges {
   added: EtfChangeItem[]
   removed: EtfChangeItem[]
   changed: (EtfChangeItem & { previousWeight: number; diff: number })[]
+}
+
+/** ETF 基本資料（#43）；totalExpense 為總管理費用（含保管費等非管理費用） */
+export interface EtfProfile {
+  etfId: string
+  securityType: SecurityType
+  issuer: string | null
+  trackingIndex: string | null
+  inceptionDate: string | null
+  listingDate: string | null
+  aumMillion: number | null
+  aumDate: string | null
+  currency: string | null
+  holdingsCount: number | null
+  assetClass: string | null
+  region: string | null
+  dividendFrequency: string | null
+  managementFee: number | null
+  totalExpense: number | null
+  custodian: string | null
+  website: string | null
 }
 
 /** 持有本股的 ETF（#42），權重取各 ETF 最新一期 */
