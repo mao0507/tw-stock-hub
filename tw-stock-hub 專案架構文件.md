@@ -182,3 +182,5 @@ sequenceDiagram
 | 32 | 訊號通知 | 逐檔訂閱與範圍（自選股／分組）每日彙整分兩張表，皆以 `last_notified_date` 保證同日只通知一次；沿用站內通知＋Telegram |
 | 33 | 回測 | api 內建預設策略（均線、KD、MACD、突破、RSI 反彈），次日開盤成交；預設計手續費與證交稅（規則與持股頁 `fee.ts` 同步維護），不做自訂條件回測 |
 | 34 | 圖表偏好與畫線 | 指標參數（`chart_preferences`）與畫線（`chart_drawings`）存帳號跨裝置同步；桌機編輯、手機只套用／顯示 |
+| 35 | 證券類型 | `stocks.security_type`（stock／etf_*）與發行投信由 TWSE `t187ap47_L` 每日判定，上櫃依代號後綴；行情爬蟲收 00 開頭加一碼英文的 ETF |
+| 36 | ETF 成分與基本資料來源 | 投信官網優先（元大 Nuxt 內嵌狀態、群益 JSON、國泰 cwapi、富邦 HTML），其餘與官網失敗時用 MoneyDJ（第三方、限速）；成分存 `etf_constituents` 每期歷史，資料日變才寫；相鄰兩期來源不同不比較。基本資料 `etf_profiles`：追蹤指數以 TWSE 為準，其餘取自 MoneyDJ |
