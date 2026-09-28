@@ -1,6 +1,7 @@
 """ETF 成分與基本資料（來源：MoneyDJ ETF 頁，單一格式覆蓋全 ETF；第三方網站，逐檔限速）。
 
 - etf_holdings（每日）：成分表含資料日期，只有資料日期比 DB 最新一期新才寫入，保存每期歷史。
+  有投信官網 parser 的 ETF（etf_issuers.ISSUER_PARSERS）用官網每日資料，官網失敗才退回 MoneyDJ。
   台股成分附代號（2330.TW／.TWO）；海外股保留原始代號（NVDA.US）；債券、期貨、現金沒有代號。
 - etf_refresh（每週）：基本資料頁 → etf_profiles（追蹤指數若 TWSE 已提供則不覆蓋）。
 """
@@ -18,6 +19,7 @@ from sqlalchemy.dialects.postgresql import insert
 
 from config import settings
 from db.connection import get_session
+from crawlers.fundamental.etf_issuers import ISSUER_PARSERS, Fetcher
 from db.models import ETFConstituentModel, ETFProfileModel, StockModel
 
 URL = "https://www.moneydj.com/etf/x/Basic/Basic0007b.xdjhtm"
@@ -128,24 +130,58 @@ def parse_profile(html: str) -> dict | None:
     }
 
 
-async def _etfs() -> list[tuple[str, str]]:
+def pick_source(issuer: str | None) -> tuple[str, Fetcher] | None:
+    """有官網 parser 的投信回 (來源代碼, 抓取函式)，否則 None（用 MoneyDJ）。"""
+    return ISSUER_PARSERS.get(issuer or "")
+
+
+def assign_stock_ids(rows: list[dict], known_ids: set[str]) -> list[dict]:
+    """官網只給原始代號：代號是已知台股才填 stock_id（海外、期貨、債券代號不會對到）。"""
+    return [{**r, "stock_id": r["stock_id"] or (r["symbol"] if r["symbol"] in known_ids else None)} for r in rows]
+
+
+async def _etfs() -> list[tuple[str, str, str | None]]:
     async with get_session() as session:
         rows = await session.execute(
-            select(StockModel.id, StockModel.security_type)
+            select(StockModel.id, StockModel.security_type, StockModel.issuer)
             .where(StockModel.security_type != "stock", StockModel.is_active.is_(True))
             .order_by(StockModel.id)
         )
-        return [(r[0], r[1]) for r in rows.all()]
+        return [(r[0], r[1], r[2]) for r in rows.all()]
+
+
+async def _stock_ids() -> set[str]:
+    async with get_session() as session:
+        return {r[0] for r in (await session.execute(select(StockModel.id))).all()}
 
 
 async def _sleep() -> None:
     await asyncio.sleep(random.uniform(settings.request_delay_min, settings.request_delay_max))
 
 
-async def fetch_holdings(client: httpx.AsyncClient, etf_id: str, security_type: str) -> int:
+async def _moneydj(client: httpx.AsyncClient, etf_id: str) -> tuple[date | None, list[dict]]:
     r = await client.get(URL, params={"etfid": f"{etf_id}.TW"})
     r.raise_for_status()
-    data_date, rows = parse_holdings(r.text)
+    return parse_holdings(r.text)
+
+
+async def fetch_holdings(
+    client: httpx.AsyncClient, etf_id: str, security_type: str, issuer: str | None = None, known_ids: set[str] | None = None,
+) -> int:
+    source, data_date, rows = SOURCE, None, []
+    official = pick_source(issuer)
+    if official:
+        try:
+            data_date, rows = await official[1](client, etf_id)
+            rows = assign_stock_ids(rows, known_ids or set())
+            source = official[0]
+        except Exception as e:
+            logger.warning(f"[ETF成分] {etf_id} 官網（{official[0]}）失敗，改用 MoneyDJ: {e}")
+            rows = []
+        if not rows:
+            source = SOURCE
+    if not rows:
+        data_date, rows = await _moneydj(client, etf_id)
     if not rows:
         logger.warning(f"[ETF成分] {etf_id} 無成分資料")
         return 0
@@ -157,7 +193,7 @@ async def fetch_holdings(client: httpx.AsyncClient, etf_id: str, security_type: 
         latest = (await session.execute(
             select(func.max(ETFConstituentModel.data_date)).where(ETFConstituentModel.etf_id == etf_id)
         )).scalar()
-        records = plan_records(etf_id, data_date, rows, latest, SOURCE)
+        records = plan_records(etf_id, data_date, rows, latest, source)
         if records:
             await session.execute(insert(ETFConstituentModel.__table__).values(records).on_conflict_do_nothing())
     return len(records)
@@ -167,9 +203,10 @@ async def refresh_holdings() -> int:
     """每日：全部 ETF 成分（資料日期有變才寫）。"""
     total = written = 0
     async with httpx.AsyncClient(timeout=30, verify=False, follow_redirects=True, headers=HEADERS) as c:
-        for etf_id, kind in await _etfs():
+        known = await _stock_ids()
+        for etf_id, kind, issuer in await _etfs():
             try:
-                n = await fetch_holdings(c, etf_id, kind)
+                n = await fetch_holdings(c, etf_id, kind, issuer, known)
                 total += n
                 written += 1 if n else 0
             except Exception as e:
@@ -183,7 +220,7 @@ async def refresh_all_known_etfs() -> int:
     """每週：全部 ETF 基本資料 → etf_profiles。"""
     count = 0
     async with httpx.AsyncClient(timeout=30, verify=False, follow_redirects=True, headers=HEADERS) as c:
-        for etf_id, _ in await _etfs():
+        for etf_id, _, _ in await _etfs():
             try:
                 ri = await c.get(INFO_URL, params={"etfid": f"{etf_id}.TW"})
                 profile = parse_profile(ri.text)
