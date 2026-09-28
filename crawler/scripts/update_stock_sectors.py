@@ -1,6 +1,7 @@
 """更新 stocks.sector 為對應的「類指數」名稱（供熱力圖點擊下鑽成份股）。
 
-來源：TWSE 上市公司基本資料 OpenAPI（t187ap03_L），欄位「產業別」為代號。
+來源：TWSE 上市公司基本資料 OpenAPI（t187ap03_L，「產業別」）與 TPEx 上櫃公司基本資料（mopsfin_t187ap03_O，
+SecuritiesIndustryCode），兩者產業代號同一套。
 產業別代號 → sector_performance 的類指數名稱。產業變動少，需要時手動跑即可。
 
   uv run python scripts/update_stock_sectors.py
@@ -19,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from db.connection import get_session  # noqa: E402
 
 TWSE_API = "https://openapi.twse.com.tw/v1/opendata/t187ap03_L"
+TPEX_API = "https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap03_O"
 
 # TWSE 產業別代號 → 類指數名稱（對齊 sector_performance.sector_name）
 INDUSTRY_CODE_TO_INDEX = {
@@ -50,6 +52,10 @@ INDUSTRY_CODE_TO_INDEX = {
     "29": "電子通路類指數",
     "30": "資訊服務類指數",
     "31": "其他電子類指數",
+    # 以下僅上櫃有
+    "32": "文化創意類指數",
+    "33": "農業科技類指數",
+    "34": "電子商務類指數",
     "35": "綠能環保類指數",
     "36": "數位雲端類指數",
     "37": "運動休閒類指數",
@@ -58,17 +64,20 @@ INDUSTRY_CODE_TO_INDEX = {
 
 
 async def main() -> None:
-    resp = httpx.get(TWSE_API, timeout=30, verify=False)
-    resp.raise_for_status()
-    companies = resp.json()
-    logger.info(f"取得 {len(companies)} 家上市公司")
-
     updates = []
-    for c in companies:
-        stock_id = str(c.get("公司代號", "")).strip()
-        index_name = INDUSTRY_CODE_TO_INDEX.get(str(c.get("產業別", "")).strip())
-        if stock_id and index_name:
-            updates.append({"id": stock_id, "sector": index_name})
+    for url, id_key, code_key, label in [
+        (TWSE_API, "公司代號", "產業別", "上市"),
+        (TPEX_API, "SecuritiesCompanyCode", "SecuritiesIndustryCode", "上櫃"),
+    ]:
+        resp = httpx.get(url, timeout=30, verify=False)
+        resp.raise_for_status()
+        companies = resp.json()
+        logger.info(f"取得 {len(companies)} 家{label}公司")
+        for c in companies:
+            stock_id = str(c.get(id_key, "")).strip()
+            index_name = INDUSTRY_CODE_TO_INDEX.get(str(c.get(code_key, "")).strip())
+            if stock_id and index_name:
+                updates.append({"id": stock_id, "sector": index_name})
 
     async with get_session() as session:
         for u in updates:
