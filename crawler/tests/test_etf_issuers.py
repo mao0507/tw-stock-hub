@@ -48,6 +48,7 @@ def test_assign_stock_ids_only_for_known_taiwan_codes():
 def test_pick_source_prefers_issuer_parser():
     assert pick_source("元大")[0] == "yuanta"
     assert pick_source("群益")[0] == "capital"
+    assert pick_source("國泰")[0] == "cathay"
     assert pick_source("富邦") is None
     assert pick_source(None) is None
 
@@ -90,3 +91,27 @@ def test_capital_without_pcf_uses_list_date():
 
 def test_capital_empty():
     assert parse_capital({"code": 200, "data": None}) == (None, [])
+
+
+# ── 國泰：cwapi（需瀏覽器標頭）；FundCode 由 ETF 清單對照，SearchDate 往回找到有資料的交易日
+from crawlers.fundamental.etf_issuers import cathay_fund_ids, parse_cathay  # noqa: E402
+
+
+def test_cathay_fund_id_mapping():
+    ids = cathay_fund_ids(cap("cathay_etf_list.json"))
+    assert ids["00878"] == "CN"
+    assert ids["00687B"] == "A8"
+    assert len(ids) == 41
+
+
+def test_cathay_stocks_bonds_futures():
+    stocks = parse_cathay(cap("cathay_stock_CN.json"), None, None)
+    assert stocks[0] == {"name": "中信金", "stock_id": None, "symbol": "2891", "weight": 9.64, "shares": 922437000}
+    bonds = parse_cathay(None, cap("cathay_bond_A8.json"), None)
+    assert bonds[0] == {"name": "US TREASURY N/B 5.0-2056/05/15", "stock_id": None, "symbol": "BBG0221YLR40", "weight": 4.8, "shares": None}
+    fut = parse_cathay(None, None, cap("cathay_future_82.json"))
+    assert fut == [{"name": "SGX FTSE CHINA A50 2026/10", "stock_id": None, "symbol": "SCN", "weight": 197.94, "shares": 8076}]
+
+
+def test_cathay_no_data():
+    assert parse_cathay({"result": None, "returnCode": "4005"}, None, None) == []

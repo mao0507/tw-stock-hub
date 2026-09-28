@@ -47,7 +47,7 @@ const industryPie = computed(() => {
 })
 const color = (i: number) => PIE_PALETTE[i % PIE_PALETTE.length]!
 const pct = (v: number | null) => (v == null ? '' : `${v > 0 ? '+' : ''}${v.toFixed(2)}%`)
-const SOURCE: Record<string, string> = { moneydj: 'MoneyDJ', yuanta: '元大投信官網', capital: '群益投信官網' }
+const SOURCE: Record<string, string> = { moneydj: 'MoneyDJ', yuanta: '元大投信官網', capital: '群益投信官網', cathay: '國泰投信官網' }
 const hasChanges = computed(() => {
   const c = changes.value
   return !!c && (c.added.length + c.removed.length + c.changed.length) > 0

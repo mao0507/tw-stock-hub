@@ -7,7 +7,7 @@ ISSUER_PARSERS：投信名稱（stocks.issuer）→ 抓取函式。有 parser �
 import json
 import re
 from collections.abc import Awaitable, Callable
-from datetime import date
+from datetime import date, timedelta
 
 import httpx
 
@@ -190,8 +190,74 @@ async def fetch_capital(client: httpx.AsyncClient, etf_id: str) -> tuple[date | 
     return parse_capital(r.json())
 
 
+# ── 國泰：cwapi.cathaysite.com.tw（Akamai 擋無瀏覽器標頭的請求）。FundCode 由 ETF 清單對照；
+# 回應沒有資料日，SearchDate 從今天往回找第一個有資料的日子（非交易日回 4005）。
+
+CATHAY = "https://cwapi.cathaysite.com.tw/api/ETF"
+CATHAY_HEADERS = {"Origin": "https://www.cathaysite.com.tw", "Referer": "https://www.cathaysite.com.tw/", "Accept": "application/json"}
+_cathay_ids: dict[str, str] | None = None
+
+
+def cathay_fund_ids(payload: dict) -> dict[str, str]:
+    return {f["stockCode"]: f["fundCode"] for f in payload.get("result") or [] if f.get("stockCode") and f.get("fundCode")}
+
+
+def _num(v) -> float | None:
+    try:
+        return float(str(v).replace(",", "")) if v not in (None, "") else None
+    except ValueError:
+        return None
+
+
+def parse_cathay(stocks: dict | None, bonds: dict | None, futures: dict | None) -> Rows:
+    rows: Rows = []
+
+    def add(name, code, weight, qty):
+        w = _num(weight)
+        if w is None or not name:
+            return
+        q = _num(qty)
+        rows.append({"name": str(name).strip()[:120], "stock_id": None, "symbol": str(code).strip() if code else None,
+                     "weight": round(w, 3), "shares": int(q) if q is not None else None})
+
+    listed = lambda p: (p or {}).get("result") if isinstance((p or {}).get("result"), list) else []  # noqa: E731
+    for x in listed(stocks):
+        add(x.get("stockName"), x.get("stockCode"), x.get("weights"), x.get("volumn"))
+    for x in listed(bonds):
+        add(x.get("bondName"), x.get("bondNo"), x.get("ntMkval"), None)  # 債券為面額，不當股數
+    for x in listed(futures):
+        add(f"{x.get('ftName')} {x.get('ftDate') or ''}".strip(), x.get("ftNo"), x.get("ntMkval"), x.get("volumn"))
+    rows.sort(key=lambda r: -r["weight"])
+    return rows
+
+
+async def fetch_cathay(client: httpx.AsyncClient, etf_id: str) -> tuple[date | None, Rows]:
+    global _cathay_ids
+    if _cathay_ids is None:
+        r = await client.get(f"{CATHAY}/GetETFList", params={"CurrentPage": 1, "PerPageCount": 200}, headers=CATHAY_HEADERS)
+        r.raise_for_status()
+        _cathay_ids = cathay_fund_ids(r.json())
+    code = _cathay_ids.get(etf_id)
+    if not code:
+        raise LookupError(f"國泰 ETF 清單查無 {etf_id}")
+    day = date.today()
+    for _ in range(8):
+        if day.weekday() < 5:
+            params = {"FundCode": code, "SearchDate": day.isoformat()}
+            parts = []
+            for api in ("GetETFDetailStockList", "GetETFDetailBondList", "GetETFDetailFutureList"):
+                r = await client.get(f"{CATHAY}/{api}", params=params, headers=CATHAY_HEADERS)
+                parts.append(r.json() if r.status_code == 200 else None)
+            rows = parse_cathay(*parts)
+            if rows:
+                return day, rows
+        day -= timedelta(days=1)
+    return None, []
+
+
 ISSUER_PARSERS: dict[str, tuple[str, Fetcher]] = {
     # 投信（stocks.issuer）→ (來源代碼, 抓取函式)
     "元大": ("yuanta", fetch_yuanta),
     "群益": ("capital", fetch_capital),
+    "國泰": ("cathay", fetch_cathay),
 }
