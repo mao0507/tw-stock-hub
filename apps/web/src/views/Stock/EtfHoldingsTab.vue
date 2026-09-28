@@ -1,15 +1,16 @@
 <script setup lang="ts">
-// ETF 成分股分頁（#40）：最新一期成分、產業分布；台股成分可點進個股頁
+// ETF 成分股分頁（#40）：最新一期成分、產業分布；台股成分可點進個股頁。與上期比較（#41）只在桌機顯示
 import { computed, ref, watch } from 'vue'
 import { PieChart, PIE_PALETTE } from '@tw-stock-hub/charts'
 import { LoadingSkeleton } from '@tw-stock-hub/ui'
 import { stockApi } from '@tw-stock-hub/api-client'
-import type { EtfHoldings } from '@tw-stock-hub/types'
+import type { EtfChanges, EtfHoldings } from '@tw-stock-hub/types'
 import { useMediaQuery } from '@/composables/useMediaQuery'
 
 const props = defineProps<{ stockId: string }>()
 
 const data = ref<EtfHoldings | null>(null)
+const changes = ref<EtfChanges | null>(null)
 const loading = ref(false)
 const failed = ref(false)
 const showAll = ref(false)
@@ -21,8 +22,11 @@ watch(() => props.stockId, async (id) => {
   failed.value = false
   showAll.value = false
   try {
-    const res = await stockApi.getEtfHoldings(id)
-    if (id === props.stockId) data.value = res
+    const [res, ch] = await Promise.all([
+      stockApi.getEtfHoldings(id),
+      stockApi.getEtfChanges(id).catch(() => null),
+    ])
+    if (id === props.stockId) { data.value = res; changes.value = ch }
   } catch (e) {
     console.warn('[EtfHoldings] load failed', e)
     if (id === props.stockId) failed.value = true
@@ -44,6 +48,11 @@ const industryPie = computed(() => {
 const color = (i: number) => PIE_PALETTE[i % PIE_PALETTE.length]!
 const pct = (v: number | null) => (v == null ? '' : `${v > 0 ? '+' : ''}${v.toFixed(2)}%`)
 const SOURCE: Record<string, string> = { moneydj: 'MoneyDJ' }
+const hasChanges = computed(() => {
+  const c = changes.value
+  return !!c && (c.added.length + c.removed.length + c.changed.length) > 0
+})
+const w = (v: number) => `${v.toFixed(2)}%`
 </script>
 
 <template>
@@ -123,6 +132,87 @@ const SOURCE: Record<string, string> = { moneydj: 'MoneyDJ' }
             <span class="ind-w num">{{ ind.weight.toFixed(2) }}%</span>
           </li>
         </ul>
+      </div>
+    </div>
+
+    <div
+      v-if="isDesktop && changes?.previousDate"
+      class="fund-sec"
+    >
+      <div class="fund-hd-row">
+        <span class="fund-hd">與上期比較</span>
+        <span class="fund-hd-side">{{ changes.previousDate }} → {{ changes.dataDate }}</span>
+      </div>
+      <p
+        v-if="!changes.comparable"
+        class="fund-empty"
+      >
+        資料來源已更換，本期不比較
+      </p>
+      <p
+        v-else-if="!hasChanges"
+        class="fund-empty"
+      >
+        成分與權重皆無變動
+      </p>
+      <div
+        v-else
+        class="chg-grid"
+      >
+        <section>
+          <h4 class="chg-hd">
+            新增 <span class="num">{{ changes.added.length }}</span>
+          </h4>
+          <ul>
+            <li
+              v-for="x in changes.added"
+              :key="x.name"
+              class="chg-row"
+            >
+              <span>{{ x.name }}<span
+                v-if="x.stockId"
+                class="etf-sym num"
+              >{{ x.stockId }}</span></span>
+              <span class="num">{{ w(x.weight) }}</span>
+            </li>
+          </ul>
+        </section>
+        <section>
+          <h4 class="chg-hd">
+            剔除 <span class="num">{{ changes.removed.length }}</span>
+          </h4>
+          <ul>
+            <li
+              v-for="x in changes.removed"
+              :key="x.name"
+              class="chg-row"
+            >
+              <span>{{ x.name }}<span
+                v-if="x.stockId"
+                class="etf-sym num"
+              >{{ x.stockId }}</span></span>
+              <span class="num text-gray-500">{{ w(x.weight) }}</span>
+            </li>
+          </ul>
+        </section>
+        <section>
+          <h4 class="chg-hd">
+            權重變化 <span class="num">{{ changes.changed.length }}</span>
+          </h4>
+          <ul class="chg-scroll">
+            <li
+              v-for="x in changes.changed"
+              :key="x.name"
+              class="chg-row"
+            >
+              <span>{{ x.name }}</span>
+              <span class="num">
+                <span class="text-gray-500">{{ w(x.previousWeight) }} →</span> {{ w(x.weight) }}
+                <span :class="x.diff > 0 ? 'is-up' : 'is-dn'">{{ x.diff > 0 ? '+' : '' }}{{ x.diff.toFixed(2) }}</span>
+              </span>
+            </li>
+          </ul>
+        </section>
       </div>
     </div>
 
@@ -246,6 +336,10 @@ const SOURCE: Record<string, string> = { moneydj: 'MoneyDJ' }
 .etf-link { color: var(--txt); font-weight: 600; text-decoration: none; }
 .etf-link:hover { color: var(--ink); text-decoration: underline; }
 .etf-sym { color: var(--muted); font-size: 0.66rem; margin-left: 0.35rem; }
+.chg-grid { display: grid; grid-template-columns: 1fr 1fr 1.4fr; gap: 1.25rem; }
+.chg-hd { font-size: 0.8rem; font-weight: 600; color: var(--muted); margin-bottom: 0.35rem; }
+.chg-row { display: flex; justify-content: space-between; gap: 0.5rem; padding: 0.35rem 0; border-bottom: 1px solid var(--bd-soft); font-size: 0.82rem; }
+.chg-scroll { max-height: 260px; overflow-y: auto; }
 .etf-bar-track { height: 0.5rem; background: var(--bg); border-radius: 999px; overflow: hidden; min-width: 80px; }
 .etf-bar-fill { height: 100%; background: var(--ink); opacity: 0.75; border-radius: 999px; }
 </style>

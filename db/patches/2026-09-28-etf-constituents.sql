@@ -1,4 +1,4 @@
--- #40 ETF 成分改為保存歷史：新建 etf_constituents，搬入既有 etf_holdings 最新一期後移除舊表（冪等）
+-- #40 ETF 成分改為保存歷史：新建 etf_constituents、移除舊 etf_holdings（冪等）
 SET search_path = stocks, public;
 CREATE TABLE IF NOT EXISTS etf_constituents (
   etf_id       VARCHAR(10)  NOT NULL,
@@ -13,16 +13,8 @@ CREATE TABLE IF NOT EXISTS etf_constituents (
 );
 CREATE INDEX IF NOT EXISTS idx_etf_constituents_stock ON etf_constituents (stock_id, data_date DESC);
 
-DO $$
-BEGIN
-  IF to_regclass('stocks.etf_holdings') IS NOT NULL THEN
-    INSERT INTO etf_constituents (etf_id, data_date, holding_name, stock_id, symbol, weight, shares, source)
-    SELECT etf_id, updated_date, COALESCE(stock_name, stock_id), stock_id, stock_id || '.TW', weight, shares, 'moneydj'
-    FROM etf_holdings WHERE updated_date IS NOT NULL
-    ON CONFLICT DO NOTHING;
-    DROP TABLE etf_holdings;
-  END IF;
-END $$;
+-- 舊表的 updated_date 是爬取日而非資料日，搬進來會擋住較早資料日的新一期 → 不搬，直接移除（由 etf_holdings 任務重爬）
+DROP TABLE IF EXISTS etf_holdings;
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON etf_constituents TO crawler;
 GRANT SELECT ON etf_constituents TO api;

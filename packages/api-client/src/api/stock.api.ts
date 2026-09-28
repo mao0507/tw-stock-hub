@@ -5,7 +5,7 @@ import type {
   Margin, MarginParams, MarginRankingItem, HighRatioItem,
   BrokerRanking, BrokerOverview, BrokerLeaderboard, BrokerDetail, BrokerProfile,
   BrokerStreak, BrokerConcentration,
-  RevenueItem, FinancialItem, DividendItem, Valuation, HolderItem, ExDividendItem, EtfHoldings,
+  RevenueItem, FinancialItem, DividendItem, Valuation, HolderItem, ExDividendItem, EtfHoldings, EtfChanges,
   FinancialMetrics,
   StockScore, BacktestParams, BacktestResult, BacktestStrategyInfo, StockIndicators, TechnicalSignal, TodaySignals, SignalSide,
   ContinuousItem, NewsItem, NewsParams, MopsParams,
@@ -144,6 +144,10 @@ export const stockApi = {
   },
   async getEtfHoldings(id: string): Promise<EtfHoldings> {
     const { data } = await apiClient.get(`/api/stocks/${id}/etf-holdings`, { timeout: 30_000 })
+    return data
+  },
+  async getEtfChanges(id: string): Promise<EtfChanges> {
+    const { data } = await apiClient.get(`/api/stocks/${id}/etf-changes`)
     return data
   },
   async getScore(id: string): Promise<StockScore> {

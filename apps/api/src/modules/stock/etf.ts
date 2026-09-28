@@ -4,7 +4,7 @@ import type { Db } from '../../db/client.js'
 import { etfInfo } from '../../db/schema/stocks.js'
 import { cached, ErrorBody, findActiveStock, IdParam, json, NOT_FOUND, notFoundBody } from './shared.js'
 
-// ETF 成分（#40）：最新一期成分清單與產業分布。成分表保存每期歷史，這裡只取最新資料日。
+// ETF 成分（#40）：最新一期成分清單與產業分布；與上期比較（#41）。成分表保存每期歷史。
 
 const Holding = z.object({
   name: z.string(),
@@ -33,6 +33,24 @@ const route = createRoute({
   },
 })
 
+const Item = z.object({ name: z.string(), stockId: z.string().nullable(), weight: z.number() })
+const changesRoute = createRoute({
+  method: 'get',
+  path: '/stocks/{id}/etf-changes',
+  request: { params: IdParam },
+  responses: {
+    200: json(z.object({
+      comparable: z.boolean().describe('相鄰兩期來源相同才比較'),
+      dataDate: z.string().nullable(),
+      previousDate: z.string().nullable(),
+      added: z.array(Item),
+      removed: z.array(Item),
+      changed: z.array(Item.extend({ previousWeight: z.number(), diff: z.number() })),
+    }), '最新一期與上一期的成分變化'),
+    404: json(ErrorBody, '查無股票'),
+  },
+})
+
 const round2 = (v: number) => Math.round(v * 100) / 100
 const n = (v: string | null) => (v == null ? null : Number(v))
 
@@ -42,6 +60,48 @@ type Row = {
 }
 
 export function registerEtfRoutes(app: OpenAPIHono, db: Db) {
+  app.openapi(changesRoute, async (c) => {
+    const { id } = c.req.valid('param')
+    const r = await cached(`etf-changes:${id}`, async () => {
+      const stock = await findActiveStock(db, id)
+      if (!stock) return NOT_FOUND
+      const empty = { comparable: false, dataDate: null, previousDate: null, added: [], removed: [], changed: [] }
+      if (stock.securityType === 'stock') return { data: empty }
+      const periods = await db.execute<{ d: string; source: string }>(sql`
+        SELECT data_date::text AS d, MIN(source) AS source FROM stocks.etf_constituents
+        WHERE etf_id = ${id} GROUP BY data_date ORDER BY data_date DESC LIMIT 2`)
+      const [cur, prev] = periods
+      if (!cur || !prev) return { data: { ...empty, dataDate: cur?.d ?? null } }
+      const base = { dataDate: cur.d, previousDate: prev.d }
+      if (cur.source !== prev.source) return { data: { ...empty, ...base } }
+      const rows = await db.execute<{ d: string; name: string; stock_id: string | null; weight: string | null }>(sql`
+        SELECT data_date::text AS d, holding_name AS name, stock_id, weight FROM stocks.etf_constituents
+        WHERE etf_id = ${id} AND data_date IN (${cur.d}, ${prev.d})`)
+      const pick = (d: string) => new Map(rows.filter((x) => x.d === d).map((x) => [x.name, x]))
+      const now = pick(cur.d)
+      const before = pick(prev.d)
+      const item = (x: (typeof rows)[number]) => ({ name: x.name, stockId: x.stock_id, weight: Number(x.weight ?? 0) })
+      const byWeight = <T extends { weight: number }>(a: T, b: T) => b.weight - a.weight
+      const changed = [...now.values()]
+        .filter((x) => before.has(x.name))
+        .map((x) => {
+          const previousWeight = Number(before.get(x.name)!.weight ?? 0)
+          return { ...item(x), previousWeight, diff: round2(Number(x.weight ?? 0) - previousWeight) }
+        })
+        .filter((x) => x.diff !== 0)
+        .sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff))
+      return {
+        data: {
+          comparable: true, ...base,
+          added: [...now.values()].filter((x) => !before.has(x.name)).map(item).sort(byWeight),
+          removed: [...before.values()].filter((x) => !now.has(x.name)).map(item).sort(byWeight),
+          changed,
+        },
+      }
+    })
+    return 'notFound' in r ? c.json(notFoundBody(id), 404) : c.json(r.data, 200)
+  })
+
   app.openapi(route, async (c) => {
     const { id } = c.req.valid('param')
     const r = await cached(`etf-holdings:${id}`, async () => {

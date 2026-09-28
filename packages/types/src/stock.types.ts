@@ -323,6 +323,17 @@ export interface EtfHoldings {
   holdings: EtfHolding[]
 }
 
+/** ETF 成分與上期比較（#41）；相鄰兩期來源不同時 comparable=false */
+export interface EtfChangeItem { name: string; stockId: string | null; weight: number }
+export interface EtfChanges {
+  comparable: boolean
+  dataDate: string | null
+  previousDate: string | null
+  added: EtfChangeItem[]
+  removed: EtfChangeItem[]
+  changed: (EtfChangeItem & { previousWeight: number; diff: number })[]
+}
+
 export interface ExDividendItem {
   exDate: string
   stockId: string
