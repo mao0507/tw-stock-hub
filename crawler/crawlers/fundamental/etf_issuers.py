@@ -134,7 +134,64 @@ async def fetch_yuanta(client: httpx.AsyncClient, etf_id: str) -> tuple[date | N
     return parse_yuanta(r.text)
 
 
+# ── 群益：JSON API。ETF 代號 → 內部 fundNo 由 ETF 清單 API 自動對照（每次執行快取一次）
+
+CAPITAL = "https://www.capitalfund.com.tw/CFWeb/api/etf"
+_capital_ids: dict[str, str] | None = None
+
+
+def capital_fund_ids(payload: dict) -> dict[str, str]:
+    return {f["stockNo"]: f["fundNo"] for f in (payload.get("data") or {}).get("funds") or [] if f.get("stockNo")}
+
+
+def _ymd(v: str | None) -> date | None:
+    m = re.match(r"(\d{4})[-/](\d{1,2})[-/](\d{1,2})", v or "")
+    return date(int(m[1]), int(m[2]), int(m[3])) if m else None
+
+
+def parse_capital(payload: dict) -> tuple[date | None, Rows]:
+    d = payload.get("data") or {}
+    rows: Rows = []
+
+    def add(name, code, weight, qty):
+        if weight is None or not name:
+            return
+        rows.append({
+            "name": str(name).strip()[:120], "stock_id": None, "symbol": str(code).strip() if code else None,
+            "weight": round(float(weight), 3), "shares": int(qty) if isinstance(qty, (int, float)) else None,
+        })
+
+    for x in d.get("stocks") or []:
+        add(x.get("stocName"), x.get("stocNo"), x.get("weight"), x.get("share"))
+    for x in d.get("futures") or []:
+        add(x.get("txDesc"), x.get("txEname"), x.get("weight"), x.get("lot"))
+    for x in d.get("bonds") or []:
+        add(x.get("bondName"), x.get("bondNo"), x.get("weight"), None)  # 債券為面額，不是股數
+    if not rows:
+        return None, []
+    rows.sort(key=lambda r: -r["weight"])
+    # pcf.date2 為清單對應的交易日；債券型沒有 pcf，退用清單日期 date1
+    first = next((x for k in ("stocks", "bonds", "futures") for x in d.get(k) or []), {})
+    data_date = _ymd((d.get("pcf") or {}).get("date2")) or _ymd(first.get("date1"))
+    return data_date, rows
+
+
+async def fetch_capital(client: httpx.AsyncClient, etf_id: str) -> tuple[date | None, Rows]:
+    global _capital_ids
+    if _capital_ids is None:
+        r = await client.post(f"{CAPITAL}/list", json={})
+        r.raise_for_status()
+        _capital_ids = capital_fund_ids(r.json())
+    fund_id = _capital_ids.get(etf_id)
+    if not fund_id:
+        raise LookupError(f"群益 ETF 清單查無 {etf_id}")
+    r = await client.post(f"{CAPITAL}/buyback", json={"fundId": fund_id, "date": None})
+    r.raise_for_status()
+    return parse_capital(r.json())
+
+
 ISSUER_PARSERS: dict[str, tuple[str, Fetcher]] = {
     # 投信（stocks.issuer）→ (來源代碼, 抓取函式)
     "元大": ("yuanta", fetch_yuanta),
+    "群益": ("capital", fetch_capital),
 }

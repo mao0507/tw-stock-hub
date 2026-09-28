@@ -47,5 +47,46 @@ def test_assign_stock_ids_only_for_known_taiwan_codes():
 
 def test_pick_source_prefers_issuer_parser():
     assert pick_source("元大")[0] == "yuanta"
+    assert pick_source("群益")[0] == "capital"
     assert pick_source("富邦") is None
     assert pick_source(None) is None
+
+
+# ── 群益：JSON API（fundId 由 ETF 清單 API 自動對照）
+import json  # noqa: E402
+
+from crawlers.fundamental.etf_issuers import capital_fund_ids, parse_capital  # noqa: E402
+
+cap = lambda name: json.loads((FIX / name).read_text(encoding="utf-8"))  # noqa: E731
+
+
+def test_capital_fund_id_mapping_from_list():
+    ids = capital_fund_ids(cap("capital_etf_list.json"))
+    assert ids["00919"] == "195"
+    assert ids["00937B"] == "378"
+    assert len(ids) == 28
+
+
+def test_capital_stocks_and_futures():
+    data_date, rows = parse_capital(cap("capital_buyback_195.json"))
+    assert data_date == date(2026, 9, 24)  # pcf.date2：申購買回清單對應的交易日
+    assert len(rows) == 41
+    assert rows[0] == {"name": "富邦金", "stock_id": None, "symbol": "2881", "weight": 15.029, "shares": 608720000}
+    assert {"name": "台指期202610", "stock_id": None, "symbol": "TX202610", "weight": 0.152, "shares": 96} in rows
+
+
+def test_capital_bond_fund():
+    data_date, rows = parse_capital(cap("capital_buyback_378.json"))
+    assert data_date == date(2026, 9, 23)
+    assert len(rows) == 218
+    assert rows[0]["symbol"] == "XS2638076187" and rows[0]["shares"] is None  # 債券為面額，不當股數
+
+
+def test_capital_without_pcf_uses_list_date():
+    payload = cap("capital_buyback_378.json")
+    payload["data"]["pcf"] = None
+    assert parse_capital(payload)[0] == date(2026, 9, 29)
+
+
+def test_capital_empty():
+    assert parse_capital({"code": 200, "data": None}) == (None, [])
